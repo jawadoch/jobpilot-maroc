@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Import / export{% endblock %}
+{% block content %}
+{% call m.page_header("Paramètres", None, "bi-gear") %}{% endcall %}
+{% include "settings/_nav.html" %}
+<div class="row g-3">
+  <div class="col-lg-6">
+    <section class="panel h-100" aria-labelledby="ex-title">
+      <div class="panel-header"><h2 id="ex-title"><i class="bi bi-box-arrow-up" aria-hidden="true"></i> Exporter</h2><span class="small text-secondary">{{ total }} candidature(s)</span></div>
+      <div class="panel-body">
+        <p class="small">Le CSV est encodé en UTF-8 avec BOM et utilise le point-virgule : il s’ouvre directement dans Excel avec les accents. Depuis les listes de candidatures, les boutons CSV / JSON exportent uniquement la sélection filtrée.</p>
+        <div class="d-flex flex-column gap-2">
+          <a class="btn btn-sm btn-outline-primary text-start" href="{{ url_for('exports.export_csv', archived='all') }}"><i class="bi bi-filetype-csv" aria-hidden="true"></i> Toutes les candidatures (CSV, archives incluses)</a>
+          <a class="btn btn-sm btn-outline-primary text-start" href="{{ url_for('exports.export_json', archived='all') }}"><i class="bi bi-filetype-json" aria-hidden="true"></i> Toutes les candidatures avec étapes, checklist et documents (JSON)</a>
+          <a class="btn btn-sm btn-outline-primary text-start" href="{{ url_for('exports.export_full_json') }}"><i class="bi bi-braces" aria-hidden="true"></i> Export complet : candidatures, bibliothèque, préparation, statuts, profil (JSON)</a>
+        </div>
+      </div>
+    </section>
+  </div>
+  <div class="col-lg-6">
+    <section class="panel h-100" aria-labelledby="im-title">
+      <div class="panel-header"><h2 id="im-title"><i class="bi bi-box-arrow-in-down" aria-hidden="true"></i> Importer depuis un CSV</h2></div>
+      <div class="panel-body">
+        <ol class="small ps-3">
+          <li>Téléchargez le <a href="{{ url_for('exports.import_template') }}">modèle CSV</a> (ou réutilisez un export CSV).</li>
+          <li>Remplissez une ligne par candidature (colonnes obligatoires : titre, organisation, secteur). Dates au format JJ/MM/AAAA.</li>
+          <li>Importez : un <strong>aperçu</strong> s’affiche avec les erreurs et les doublons. Rien n’est enregistré avant votre confirmation.</li>
+        </ol>
+        <form method="post" action="{{ url_for('exports.import_preview') }}" enctype="multipart/form-data" novalidate>
+          {{ import_form.csrf_token }}
+          {{ m.field(import_form.file) }}
+          <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-eye" aria-hidden="true"></i> Prévisualiser l’import</button>
+        </form>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

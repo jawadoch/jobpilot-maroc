@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Paramètres — données d’exemple{% endblock %}
+{% block content %}
+{% call m.page_header("Paramètres", None, "bi-gear") %}{% endcall %}
+{% include "settings/_nav.html" %}
+<div class="panel">
+  <div class="panel-body">
+    <h2 class="h6">Données d’exemple (fictives)</h2>
+    <p class="small">Pour découvrir l’application, vous pouvez ajouter quelques candidatures <strong>fictives</strong> : un concours d’ingénieur d’État dans un ministère, un recrutement universitaire, un CDI Data Engineer avec test technique, un poste Data Scientist / IA, une opportunité en France, un refus, des variantes de CV, une épreuve écrite à venir et une demande manuscrite signée manquante.</p>
+    <ul class="small">
+      <li>Tous les éléments sont préfixés <strong>[EXEMPLE]</strong> et marqués d’un badge <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Exemple</span>.</li>
+      <li>Les organisations, références et dates sont inventées (calculées à partir d’aujourd’hui) : <strong>ce ne sont pas de vraies offres ni de vraies échéances.</strong></li>
+      <li>Ils sont inclus dans les statistiques tant qu’ils sont présents. Le bouton de suppression ne retire que les données d’exemple ; vos données réelles ne sont jamais touchées.</li>
+    </ul>
+    <div class="d-flex gap-2">
+      {% if not has_demo %}
+        {{ m.post_button(url_for('settings.demo_seed'), 'Ajouter les données d’exemple', 'bi-magic', 'btn btn-sm btn-primary', confirm='Ajouter des candidatures fictives marquées [EXEMPLE] ?') }}
+      {% else %}
+        <span class="badge bg-warning-subtle text-warning-emphasis align-self-center">Données d’exemple présentes</span>
+        {{ m.post_button(url_for('settings.demo_purge'), 'Supprimer les données d’exemple', 'bi-trash', 'btn btn-sm btn-outline-danger', confirm='Supprimer toutes les données d’exemple ? Vos données réelles sont conservées.') }}
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

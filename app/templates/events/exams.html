@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Entretiens et examens{% endblock %}
+{% block content %}
+{% call m.page_header("Entretiens et examens", "Épreuves écrites et orales, entretiens techniques et RH, tests techniques / QCM.", "bi-mic") %}
+  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('preparation.index', vue='examens') }}"><i class="bi bi-journal-check" aria-hidden="true"></i> Révisions liées</a>
+  <a class="btn btn-sm btn-primary" href="{{ url_for('events.create', type='written') }}"><i class="bi bi-calendar-plus" aria-hidden="true"></i> Nouvelle épreuve / entretien</a>
+{% endcall %}
+<div class="row g-3">
+  <div class="col-lg-7">
+    <section class="panel" aria-labelledby="up-title">
+      <div class="panel-header"><h2 id="up-title">À venir et en retard</h2><span class="small text-secondary">{{ upcoming|length }}</span></div>
+      <div class="panel-body py-1">
+        {% if upcoming %}<ul class="agenda-list">{% for item in upcoming %}{{ m.agenda_row(item) }}{% endfor %}</ul>
+        {% else %}{% call m.empty_state('bi-mic-mute', 'Aucun entretien ni examen planifié') %}{% endcall %}{% endif %}
+      </div>
+    </section>
+  </div>
+  <div class="col-lg-5">
+    <section class="panel" aria-labelledby="past-title">
+      <div class="panel-header"><h2 id="past-title">Passés — retours et résultats</h2></div>
+      <div class="panel-body py-1">
+        {% if past %}
+        <ul class="agenda-list">
+          {% for item in past %}
+          <li class="agenda-item">
+            <i class="bi {{ item.icon }} agenda-icon" aria-hidden="true"></i>
+            <div class="flex-grow-1 min-w-0">
+              <div class="small text-secondary">{{ item.day|fr_date }} · {{ item.kind_label }}</div>
+              <div class="fw-semibold">{{ item.title }}</div>
+              <a class="small" href="{{ url_for('applications.detail', app_id=item.application.id, onglet='etapes') }}">{{ item.application.title }}</a>
+              {% if item.event.outcome %}<div class="small mt-1"><strong>Retour :</strong> {{ item.event.outcome|nl2br }}</div>
+              {% else %}<div class="small text-secondary mt-1"><a href="{{ url_for('events.edit', event_id=item.event.id, next=request.full_path) }}">Ajouter le retour / résultat</a></div>{% endif %}
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}<p class="small text-secondary my-2">Aucun entretien ou examen passé.</p>{% endif %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ 'Modifier le sujet' if topic else 'Nouveau sujet de révision' }}{% endblock %}
+{% block content %}
+{% call m.page_header('Modifier le sujet' if topic else 'Nouveau sujet de révision', None, 'bi-journal-plus') %}{% endcall %}
+<form method="post" novalidate class="form-section">
+  {{ form.csrf_token }}
+  <div class="row">
+    {{ m.field(form.subject_id, 'col-md-6', help='Liste modifiable dans « Gérer les matières ».') }}
+    {{ m.field(form.application_id, 'col-md-6') }}
+    {{ m.field(form.topic, 'col-md-8') }}
+    {{ m.field(form.exam_weight, 'col-md-4') }}
+    {{ m.field(form.priority, 'col-md-3') }}
+    {{ m.field(form.difficulty, 'col-md-3') }}
+    {{ m.field(form.confidence, 'col-md-3') }}
+    {{ m.field(form.status, 'col-md-3') }}
+    {{ m.field(form.next_revision, 'col-md-3') }}
+    {{ m.field(form.minutes_spent, 'col-md-3') }}
+    {{ m.field(form.notes, 'col-md-12', rows=6) }}
+  </div>
+  <div class="d-flex gap-2 pb-3">
+    <button class="btn btn-primary" type="submit"><i class="bi bi-check-lg" aria-hidden="true"></i> Enregistrer</button>
+    <a class="btn btn-outline-secondary" href="{{ url_for('preparation.index') }}">Annuler</a>
+  </div>
+</form>
+{% endblock %}

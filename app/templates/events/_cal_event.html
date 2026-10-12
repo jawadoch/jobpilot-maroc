@@ -1,0 +1,3 @@
+<a class="cal-event lvl-{{ item.level }}" href="{{ url_for('events.edit', event_id=item.event.id, next=request.full_path) if item.event else url_for('applications.detail', app_id=item.application.id) }}" title="{{ item.kind_label }} — {{ item.title }} ({{ item.application.title }}){% if item.time %} à {{ item.time|fr_time }}{% endif %}">
+  <i class="bi {{ item.icon }}" aria-hidden="true"></i>{% if item.time %} {{ item.time|fr_time }}{% endif %} {{ item.title }}<span class="visually-hidden"> — {{ item.application.title }}</span>
+</a>

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="panel mt-4 mx-auto" style="max-width: 560px">
+  <div class="panel-body text-center py-5">
+    <div class="display-6 text-secondary mb-2">{{ code }}</div>
+    <h1 class="h4">{{ title }}</h1>
+    <p class="text-secondary">{{ message }}</p>
+    <a class="btn btn-primary btn-sm" href="{{ url_for('dashboard.index') }}"><i class="bi bi-speedometer2" aria-hidden="true"></i> Retour au tableau de bord</a>
+  </div>
+</div>
+{% endblock %}

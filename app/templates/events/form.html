@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ 'Modifier l’étape' if event else 'Nouvelle étape' }}{% endblock %}
+{% block content %}
+{% call m.page_header('Modifier l’étape' if event else 'Nouvelle étape', 'Épreuve, entretien, test, relance ou publication — chaque étape est suivie séparément.', 'bi-calendar-plus') %}{% endcall %}
+{% if not form.application_id.choices %}
+  <div class="panel">{% call m.empty_state('bi-inbox', 'Aucune candidature active', 'Créez d’abord une candidature pour pouvoir lui associer une étape.') %}<a class="btn btn-sm btn-primary" href="{{ url_for('applications.create') }}">Nouvelle candidature</a>{% endcall %}</div>
+{% else %}
+<form method="post" novalidate class="form-section">
+  {{ form.csrf_token }}
+  <input type="hidden" name="next" value="{{ request.args.get('next', '') }}">
+  {% if event and event.auto_key %}
+    <div class="alert alert-info small"><i class="bi bi-link-45deg" aria-hidden="true"></i> Cette échéance est synchronisée avec la fiche candidature : modifiez sa date depuis <a href="{{ url_for('applications.edit', app_id=event.application_id) }}">la fiche</a>. Vous pouvez ici ajouter un lieu, des détails, un retour ou la marquer comme terminée.</div>
+  {% endif %}
+  {% set locked = {'disabled': 'disabled'} if event and event.auto_key else {} %}
+  <div class="row">
+    <div class="col-md-6 mb-3">{{ form.application_id.label(class='form-label') }} <span class="text-danger" aria-hidden="true">*</span>{{ form.application_id(class='form-select' ~ (' is-invalid' if form.application_id.errors else ''), **locked) }}{% for e in form.application_id.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}</div>
+    <div class="col-md-3 mb-3">{{ form.kind.label(class='form-label') }}{{ form.kind(class='form-select', **locked) }}</div>
+    {{ m.field(form.title, 'col-md-3', placeholder='ex. QCM en ligne') }}
+    <div class="col-md-3 mb-3">{{ form.event_date.label(class='form-label') }} <span class="text-danger" aria-hidden="true">*</span>{{ form.event_date(class='form-control' ~ (' is-invalid' if form.event_date.errors else ''), **locked) }}{% for e in form.event_date.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}</div>
+    <div class="col-md-2 mb-3">{{ form.event_time.label(class='form-label') }}{{ form.event_time(class='form-control', **locked) }}</div>
+    {{ m.field(form.location, 'col-md-7') }}
+    {{ m.field(form.details, 'col-md-6', rows=4) }}
+    {{ m.field(form.outcome, 'col-md-6', rows=4) }}
+    {{ m.field(form.done, 'col-12') }}
+  </div>
+  {% if event and event.auto_key %}
+    {# champs désactivés non envoyés par le navigateur : on renvoie les valeurs actuelles #}
+    <input type="hidden" name="application_id" value="{{ event.application_id }}">
+    <input type="hidden" name="kind" value="{{ event.kind }}">
+    <input type="hidden" name="event_date" value="{{ event.event_date.isoformat() }}">
+    {% if event.event_time %}<input type="hidden" name="event_time" value="{{ event.event_time.strftime('%H:%M') }}">{% endif %}
+  {% endif %}
+  <div class="d-flex gap-2 pb-3">
+    <button class="btn btn-primary" type="submit"><i class="bi bi-check-lg" aria-hidden="true"></i> Enregistrer</button>
+    <a class="btn btn-outline-secondary" href="{{ request.args.get('next') if (request.args.get('next') or '').startswith('/') and not (request.args.get('next') or '').startswith('//') else (url_for('applications.detail', app_id=event.application_id, onglet='etapes') if event else url_for('events.agenda')) }}">Annuler</a>
+  </div>
+</form>
+{% endif %}
+{% endblock %}

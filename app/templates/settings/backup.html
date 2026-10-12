@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Paramètres — sauvegarde{% endblock %}
+{% block content %}
+{% call m.page_header("Paramètres", None, "bi-gear") %}{% endcall %}
+{% include "settings/_nav.html" %}
+<div class="row g-3">
+  <div class="col-lg-6">
+    <section class="panel mb-3" aria-labelledby="bk-title">
+      <div class="panel-header"><h2 id="bk-title"><i class="bi bi-database-down" aria-hidden="true"></i> Sauvegarder</h2></div>
+      <div class="panel-body">
+        <p class="small">La base (candidatures, étapes, checklists, préparation, métadonnées des documents) et les fichiers des documents sont sauvegardés <strong>séparément</strong> : téléchargez les deux.</p>
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          <form method="post" action="{{ url_for('settings.create_backup') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-download" aria-hidden="true"></i> 1. Sauvegarder la base (.db)</button>
+          </form>
+          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('settings.download_uploads') }}"><i class="bi bi-file-zip" aria-hidden="true"></i> 2. Archive des documents (.zip)</a>
+        </div>
+        <dl class="dl-compact small">
+          <dt>Base de données</dt><dd><code>{{ db_path }}</code></dd>
+          <dt>Documents</dt><dd><code>{{ upload_path }}</code></dd>
+          <dt>Sauvegardes locales</dt><dd><code>{{ backup_path }}</code></dd>
+        </dl>
+        <p class="small text-secondary mb-0 mt-2">Chaque sauvegarde est aussi conservée dans le dossier des sauvegardes locales. Copiez-les régulièrement sur un support externe (clé USB, cloud personnel).</p>
+      </div>
+    </section>
+    <section class="panel" aria-labelledby="list-title">
+      <div class="panel-header"><h2 id="list-title">Sauvegardes disponibles</h2><span class="small text-secondary">{{ backups|length }}</span></div>
+      {% if backups %}
+      <div class="table-responsive"><table class="table table-compact align-middle">
+        <tbody>{% for b in backups %}<tr><td class="small"><code>{{ b.name }}</code></td><td class="small text-secondary text-nowrap">{{ b.stat().st_size|file_size }}</td><td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('settings.download_backup', name=b.name) }}" title="Télécharger" aria-label="Télécharger {{ b.name }}"><i class="bi bi-download" aria-hidden="true"></i></a></td></tr>{% endfor %}</tbody>
+      </table></div>
+      {% else %}<div class="panel-body small text-secondary">Aucune sauvegarde pour l’instant.</div>{% endif %}
+    </section>
+  </div>
+  <div class="col-lg-6">
+    <section class="panel border-danger-subtle" aria-labelledby="rs-title">
+      <div class="panel-header"><h2 id="rs-title" class="text-danger-emphasis"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Restaurer une sauvegarde</h2></div>
+      <div class="panel-body">
+        <div class="alert alert-danger small">
+          <strong>Opération destructive.</strong> Toutes les données actuelles seront <strong>remplacées</strong> par celles de la sauvegarde.
+          Par sécurité, une copie de la base actuelle est créée automatiquement juste avant (préfixe <code>jobpilot-avant-restauration-…</code>).
+          Le fichier est vérifié (format SQLite, intégrité, tables JobPilot) avant toute modification. Les fichiers des documents ne sont pas restaurés par cette opération : décompressez l’archive .zip dans le dossier <code>uploads</code> si nécessaire.
+        </div>
+        <form method="post" action="{{ url_for('settings.restore') }}" enctype="multipart/form-data" novalidate data-confirm="Remplacer TOUTES les données actuelles par cette sauvegarde ? Une copie de sécurité de la base actuelle sera créée avant.">
+          {{ restore_form.csrf_token }}
+          {{ m.field(restore_form.file) }}
+          {{ m.field(restore_form.acknowledge) }}
+          {{ m.field(restore_form.confirm_text, placeholder='RESTAURER') }}
+          <button class="btn btn-sm btn-danger" type="submit"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> Restaurer</button>
+        </form>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

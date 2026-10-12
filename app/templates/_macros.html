@@ -1,0 +1,126 @@
+{% macro page_header(title, subtitle=None, icon=None) %}
+<div class="page-header">
+  <div>
+    <h1 class="h4 mb-0">{% if icon %}<i class="bi {{ icon }} me-2 text-secondary" aria-hidden="true"></i>{% endif %}{{ title }}</h1>
+    {% if subtitle %}<p class="text-secondary small mb-0">{{ subtitle }}</p>{% endif %}
+  </div>
+  <div class="page-actions">{{ caller() if caller }}</div>
+</div>
+{% endmacro %}
+
+{% macro status_badge(app) -%}
+  {% if app.status_obj %}<span class="badge {{ app.status_obj.badge_class }}">{{ app.status_obj.label }}</span>{% else %}<span class="badge text-bg-secondary">{{ app.status }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro sector_badge(app) -%}
+  <span class="badge sector-badge sector-{{ app.sector }}" title="Secteur {{ app.sector_label|lower }}"><i class="bi {{ 'bi-bank' if app.sector == 'public' else 'bi-building' }}" aria-hidden="true"></i> {{ app.sector_label }}</span>
+{%- endmacro %}
+
+{% macro priority_badge(priority) -%}
+  {% set labels = {1: 'Basse', 2: 'Moyenne', 3: 'Haute'} %}
+  <span class="priority priority-{{ priority }}" title="Priorité {{ labels.get(priority, '')|lower }}"><i class="bi {{ 'bi-flag-fill' if priority == 3 else 'bi-flag' }}" aria-hidden="true"></i> {{ labels.get(priority, '—') }}</span>
+{%- endmacro %}
+
+{% macro sample_badge(obj) -%}
+  {% if obj.is_sample %}<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" title="Donnée fictive d’exemple">Exemple</span>{% endif %}
+{%- endmacro %}
+
+{% macro progress(percent, label=None) -%}
+  {% if percent is none %}<span class="text-secondary small">—</span>{% else %}
+  <div class="d-flex align-items-center gap-2" title="{{ label or ('Dossier complet à ' ~ percent ~ ' %') }}">
+    <div class="progress flex-grow-1" role="progressbar" aria-label="{{ label or 'Complétude du dossier' }}" aria-valuenow="{{ percent }}" aria-valuemin="0" aria-valuemax="100" style="height: 6px; min-width: 50px;">
+      <div class="progress-bar {{ 'bg-success' if percent == 100 else '' }}" style="width: {{ percent }}%"></div>
+    </div>
+    <span class="small text-secondary tabular">{{ percent }}&nbsp;%</span>
+  </div>
+  {% endif %}
+{%- endmacro %}
+
+{% macro field(f, class='', help=None, placeholder=None, list=None, rows=None) -%}
+<div class="{{ class }} mb-3">
+  {% if f.type == 'BooleanField' %}
+    <div class="form-check">
+      {{ f(class='form-check-input' ~ (' is-invalid' if f.errors else '')) }}
+      {{ f.label(class='form-check-label') }}
+    </div>
+  {% else %}
+    {{ f.label(class='form-label') }}{% if f.flags.required %} <span class="text-danger" aria-hidden="true">*</span>{% endif %}
+    {% set css = 'form-select' if f.type == 'SelectField' else 'form-control' %}
+    {% set attrs = {} %}
+    {% if placeholder %}{% set _ = attrs.update({'placeholder': placeholder}) %}{% endif %}
+    {% if list %}{% set _ = attrs.update({'list': list}) %}{% endif %}
+    {% if rows %}{% set _ = attrs.update({'rows': rows}) %}{% elif f.type == 'TextAreaField' %}{% set _ = attrs.update({'rows': 3}) %}{% endif %}
+    {% if f.errors %}{% set _ = attrs.update({'aria-invalid': 'true'}) %}{% endif %}
+    {{ f(class=css ~ (' is-invalid' if f.errors else ''), **attrs) }}
+  {% endif %}
+  {% for e in f.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+  {% if help %}<div class="form-text">{{ help }}</div>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro post_button(action, label, icon=None, css='btn btn-sm btn-outline-secondary', confirm=None, hidden=None, title=None) -%}
+<form method="post" action="{{ action }}" class="d-inline" {% if confirm %}data-confirm="{{ confirm }}"{% endif %}>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% if hidden %}{% for k, v in hidden.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}{% endif %}
+  <button type="submit" class="{{ css }}" {% if title %}title="{{ title }}" aria-label="{{ title }}"{% endif %}>{% if icon %}<i class="bi {{ icon }}" aria-hidden="true"></i>{% endif %}{% if label %} {{ label }}{% endif %}</button>
+</form>
+{%- endmacro %}
+
+{% macro pagination_nav(pagination, endpoint, args) -%}
+{% if pagination.pages > 1 %}
+<nav aria-label="Pagination" class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+  <span class="small text-secondary">Page {{ pagination.page }} sur {{ pagination.pages }} · {{ pagination.total }} résultat{{ 's' if pagination.total > 1 }}</span>
+  <ul class="pagination pagination-sm mb-0">
+    {% set base = args.to_dict() if args.to_dict is defined else dict(args) %}
+    <li class="page-item {{ 'disabled' if not pagination.has_prev }}">
+      <a class="page-link" href="{{ url_for(endpoint, **dict(base, page=pagination.prev_num or 1)) }}" aria-label="Page précédente">&laquo;</a>
+    </li>
+    {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+      {% if p %}
+        <li class="page-item {{ 'active' if p == pagination.page }}"><a class="page-link" href="{{ url_for(endpoint, **dict(base, page=p)) }}" {% if p == pagination.page %}aria-current="page"{% endif %}>{{ p }}</a></li>
+      {% else %}
+        <li class="page-item disabled"><span class="page-link">…</span></li>
+      {% endif %}
+    {% endfor %}
+    <li class="page-item {{ 'disabled' if not pagination.has_next }}">
+      <a class="page-link" href="{{ url_for(endpoint, **dict(base, page=pagination.next_num or pagination.pages)) }}" aria-label="Page suivante">&raquo;</a>
+    </li>
+  </ul>
+</nav>
+{% endif %}
+{%- endmacro %}
+
+{% macro empty_state(icon, title, text=None) -%}
+<div class="empty-state">
+  <i class="bi {{ icon }}" aria-hidden="true"></i>
+  <p class="fw-semibold mb-1">{{ title }}</p>
+  {% if text %}<p class="small text-secondary mb-2">{{ text }}</p>{% endif %}
+  {{ caller() if caller }}
+</div>
+{%- endmacro %}
+
+{% macro agenda_row(item, show_app=True) -%}
+<li class="agenda-item {{ 'is-done' if item.done }}">
+  <i class="bi {{ item.icon }} agenda-icon" aria-hidden="true"></i>
+  <div class="flex-grow-1 min-w-0">
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <span class="small text-secondary">{{ item.kind_label }}</span>
+      {% if item.time %}<span class="small fw-semibold tabular">{{ item.time|fr_time }}</span>{% endif %}
+      {{ deadline_badge(item.day, item.done) }}
+    </div>
+    <div class="fw-semibold text-truncate">{{ item.title }}</div>
+    {% if show_app %}
+    <a class="small text-decoration-none" href="{{ url_for('applications.detail', app_id=item.application.id, onglet='etapes' if item.event else 'apercu') }}">
+      {{ item.application.title }} · <span class="text-secondary">{{ item.application.organization }}</span>
+    </a>
+    {% endif %}
+    {% if item.location %}<div class="small text-secondary"><i class="bi bi-geo-alt" aria-hidden="true"></i> {{ item.location }}</div>{% endif %}
+  </div>
+  {% if item.event %}
+  <div class="agenda-actions">
+    {{ post_button(url_for('events.toggle_done', event_id=item.event.id), None, 'bi-check2' if not item.done else 'bi-arrow-counterclockwise', 'btn btn-sm btn-outline-success' if not item.done else 'btn btn-sm btn-outline-secondary', hidden={'next': request.full_path}, title='Marquer comme terminé' if not item.done else 'Rouvrir') }}
+    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('events.edit', event_id=item.event.id, next=request.full_path) }}" title="Modifier" aria-label="Modifier"><i class="bi bi-pencil" aria-hidden="true"></i></a>
+  </div>
+  {% endif %}
+</li>
+{%- endmacro %}

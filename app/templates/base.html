@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}JobPilot Maroc{% endblock %} · JobPilot Maroc</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
+</head>
+<body>
+<a class="visually-hidden-focusable skip-link" href="#contenu">Aller au contenu</a>
+{% set ep = request.endpoint or '' %}
+{% macro nav_item(endpoint, icon, label, active=False, badge=None) %}
+  <li class="nav-item">
+    <a class="nav-link {{ 'active' if active }}" href="{{ url_for(endpoint) }}" {% if active %}aria-current="page"{% endif %}>
+      <i class="bi {{ icon }}" aria-hidden="true"></i><span>{{ label }}</span>
+      {% if badge %}<span class="badge rounded-pill text-bg-danger ms-auto" title="Échéances en retard ou du jour">{{ badge }}</span>{% endif %}
+    </a>
+  </li>
+{% endmacro %}
+<div class="app-shell">
+  <aside class="offcanvas-lg offcanvas-start sidebar" tabindex="-1" id="sidebar" aria-labelledby="sidebarLabel">
+    <div class="offcanvas-header border-bottom border-secondary-subtle">
+      <span class="offcanvas-title fw-semibold" id="sidebarLabel">JobPilot Maroc</span>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#sidebar" aria-label="Fermer"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column p-0">
+      <a href="{{ url_for('dashboard.index') }}" class="brand d-none d-lg-flex">
+        <i class="bi bi-compass" aria-hidden="true"></i> JobPilot <span>Maroc</span>
+      </a>
+      <nav aria-label="Navigation principale">
+        <ul class="nav flex-column">
+          {{ nav_item('dashboard.index', 'bi-speedometer2', 'Tableau de bord', ep == 'dashboard.index', nav_overdue_count) }}
+          {{ nav_item('applications.index', 'bi-collection', 'Toutes les candidatures', ep in ('applications.index', 'applications.create', 'applications.edit', 'applications.detail')) }}
+          {{ nav_item('applications.public_list', 'bi-bank', 'Concours publics', ep == 'applications.public_list') }}
+          {{ nav_item('applications.private_list', 'bi-building', 'Offres du secteur privé', ep == 'applications.private_list') }}
+          {{ nav_item('events.agenda', 'bi-calendar3', 'Calendrier et échéances', ep in ('events.agenda', 'events.create', 'events.edit')) }}
+          {{ nav_item('events.exams', 'bi-mic', 'Entretiens et examens', ep == 'events.exams') }}
+          {{ nav_item('documents.index', 'bi-folder2-open', 'Documents', ep.startswith('documents.')) }}
+          {{ nav_item('preparation.index', 'bi-journal-check', 'Préparation aux concours', ep.startswith('preparation.')) }}
+          {{ nav_item('dashboard.stats', 'bi-bar-chart', 'Statistiques', ep == 'dashboard.stats') }}
+          {{ nav_item('settings.profile', 'bi-gear', 'Paramètres', ep.startswith('settings.') or ep.startswith('exports.')) }}
+        </ul>
+      </nav>
+      <div class="sidebar-footer mt-auto">
+        <div class="small fw-semibold text-white">{{ profile.full_name }}</div>
+        <div class="small">{{ today|fr_long_date|capitalize }}</div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn btn-sm btn-outline-secondary d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar" aria-controls="sidebar" aria-label="Ouvrir le menu">
+        <i class="bi bi-list" aria-hidden="true"></i>
+      </button>
+      <form class="topbar-search" role="search" action="{{ url_for('applications.index') }}" method="get">
+        <label for="global-search" class="visually-hidden">Rechercher une candidature</label>
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <input id="global-search" class="form-control form-control-sm" type="search" name="q" placeholder="Rechercher (poste, organisation, ville, référence…)" value="{{ request.args.get('q', '') if ep.startswith('applications.') else '' }}">
+      </form>
+      <div class="dropdown ms-auto">
+        <button class="btn btn-sm btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="bi bi-plus-lg" aria-hidden="true"></i> Ajouter
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><a class="dropdown-item" href="{{ url_for('applications.create', sector='public') }}"><i class="bi bi-bank me-2" aria-hidden="true"></i>Concours public</a></li>
+          <li><a class="dropdown-item" href="{{ url_for('applications.create', sector='private') }}"><i class="bi bi-building me-2" aria-hidden="true"></i>Offre du secteur privé</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item" href="{{ url_for('events.create') }}"><i class="bi bi-calendar-plus me-2" aria-hidden="true"></i>Étape / rendez-vous</a></li>
+          <li><a class="dropdown-item" href="{{ url_for('documents.create') }}"><i class="bi bi-file-earmark-arrow-up me-2" aria-hidden="true"></i>Document</a></li>
+          <li><a class="dropdown-item" href="{{ url_for('preparation.create') }}"><i class="bi bi-journal-plus me-2" aria-hidden="true"></i>Sujet de révision</a></li>
+        </ul>
+      </div>
+    </header>
+
+    <main id="contenu" class="content">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-stack">
+          {% for category, message in messages %}
+            {% set cat = category if category in ('success', 'danger', 'warning', 'info') else 'info' %}
+            <div class="alert alert-{{ cat }} alert-dismissible fade show py-2" role="{{ 'alert' if cat == 'danger' else 'status' }}">
+              <i class="bi {{ {'success': 'bi-check-circle', 'danger': 'bi-x-octagon', 'warning': 'bi-exclamation-triangle', 'info': 'bi-info-circle'}[cat] }} me-1" aria-hidden="true"></i>{{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+            </div>
+          {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+{# Fenêtre de confirmation générique : <form data-confirm="Message"> #}
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title fs-6" id="confirmModalTitle"><i class="bi bi-exclamation-triangle text-danger me-1" aria-hidden="true"></i>Confirmer l’action</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Annuler"></button>
+      </div>
+      <div class="modal-body" id="confirmModalBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" class="btn btn-sm btn-danger" id="confirmModalOk">Confirmer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
+{% block scripts %}{% endblock %}
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

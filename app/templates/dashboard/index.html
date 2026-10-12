@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Tableau de bord{% endblock %}
+{% block content %}
+{% call m.page_header("Bonjour " ~ (profile.full_name.split(' ')[0] if profile.full_name else '') ~ ", que faire aujourd’hui ?", today|fr_long_date|capitalize) %}
+  <a href="{{ url_for('applications.create', sector='public') }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-bank" aria-hidden="true"></i> Nouveau concours</a>
+  <a href="{{ url_for('applications.create', sector='private') }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-building" aria-hidden="true"></i> Nouvelle offre</a>
+{% endcall %}
+
+<section aria-label="Indicateurs clés" class="stat-grid mb-3">
+  <a class="stat" href="{{ url_for('applications.index', archived='all') }}"><div class="stat-label"><i class="bi bi-collection" aria-hidden="true"></i> Total candidatures</div><div class="stat-value">{{ stats.total }}</div><div class="stat-note">archives incluses ({{ stats.archived }})</div></a>
+  <a class="stat" href="{{ url_for('applications.index') }}"><div class="stat-label"><i class="bi bi-activity" aria-hidden="true"></i> Actives</div><div class="stat-value">{{ stats.active }}</div><div class="stat-note">non archivées, non clôturées</div></a>
+  <a class="stat" href="{{ url_for('applications.public_list', archived='all') }}"><div class="stat-label"><i class="bi bi-bank" aria-hidden="true"></i> Concours publics</div><div class="stat-value">{{ stats.public }}</div></a>
+  <a class="stat" href="{{ url_for('applications.private_list', archived='all') }}"><div class="stat-label"><i class="bi bi-building" aria-hidden="true"></i> Secteur privé</div><div class="stat-value">{{ stats.private }}</div></a>
+  <a class="stat" href="{{ url_for('events.agenda', type='deadline', periode='30') }}"><div class="stat-label"><i class="bi bi-hourglass-split" aria-hidden="true"></i> Dates limites</div><div class="stat-value">{{ stats.upcoming_deadlines }}</div><div class="stat-note">dans les 30 jours</div></a>
+  <a class="stat" href="{{ url_for('events.exams') }}"><div class="stat-label"><i class="bi bi-mic" aria-hidden="true"></i> Entretiens & examens</div><div class="stat-value">{{ stats.upcoming_exams }}</div><div class="stat-note">dans les 30 jours</div></a>
+  <a class="stat" href="#urgent"><div class="stat-label"><i class="bi bi-exclamation-diamond" aria-hidden="true"></i> Action requise</div><div class="stat-value">{{ stats.requiring_action }}</div><div class="stat-note">candidatures (retard, J-3, dossier)</div></a>
+  <a class="stat" href="{{ url_for('applications.index', status='offre', archived='all') }}"><div class="stat-label"><i class="bi bi-trophy" aria-hidden="true"></i> Offres reçues</div><div class="stat-value">{{ stats.offers }}</div><div class="stat-note">offre ou acceptée</div></a>
+  <a class="stat" href="{{ url_for('applications.index', status='refusee', archived='all') }}"><div class="stat-label"><i class="bi bi-x-circle" aria-hidden="true"></i> Refus</div><div class="stat-value">{{ stats.rejections }}</div></a>
+  <div class="stat" title="Réponses (présélection, convocation, test, entretien, liste d’attente, offre, acceptation ou refus) ÷ candidatures envoyées (hors retirées et hors préparation)">
+    <div class="stat-label"><i class="bi bi-reply" aria-hidden="true"></i> Taux de réponse</div>
+    <div class="stat-value">{% if stats.response.rate is not none %}{{ stats.response.rate|fr_number(1) }}&nbsp;%{% else %}—{% endif %}</div>
+    <div class="stat-note">{{ stats.response.responded }} réponse(s) / {{ stats.response.submitted }} envoyée(s)</div>
+  </div>
+</section>
+
+<div class="row g-3">
+  <div class="col-xl-7">
+    <section class="panel mb-3" id="urgent" aria-labelledby="urgent-title">
+      <div class="panel-header">
+        <h2 id="urgent-title"><i class="bi bi-exclamation-diamond text-danger me-1" aria-hidden="true"></i>Actions urgentes</h2>
+        <span class="small text-secondary">en retard, aujourd’hui, sous 3 jours · dossiers incomplets avant date limite (14 j)</span>
+      </div>
+      <div class="panel-body py-1">
+        {% if urgent %}
+          <ul class="agenda-list">
+          {% for item in urgent %}
+            {% if item.kind == 'dossier' %}
+            <li class="agenda-item">
+              <i class="bi {{ item.icon }} agenda-icon text-danger" aria-hidden="true"></i>
+              <div class="flex-grow-1 min-w-0">
+                <div class="d-flex flex-wrap align-items-center gap-2"><span class="small text-secondary">Dossier incomplet · date limite</span>{{ deadline_badge(item.day) }}</div>
+                <div class="fw-semibold">{{ item.title }}</div>
+                <a class="small text-decoration-none" href="{{ url_for('applications.detail', app_id=item.application.id, onglet='dossier') }}">{{ item.application.title }} · <span class="text-secondary">{{ item.application.organization }}</span></a>
+              </div>
+              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('applications.detail', app_id=item.application.id, onglet='dossier') }}">Compléter</a>
+            </li>
+            {% else %}
+              {{ m.agenda_row(item) }}
+            {% endif %}
+          {% endfor %}
+          </ul>
+        {% else %}
+          {% call m.empty_state('bi-check2-circle', 'Rien d’urgent', 'Aucune échéance en retard ni dans les 3 prochains jours.') %}{% endcall %}
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="panel mb-3" aria-labelledby="upcoming-title">
+      <div class="panel-header">
+        <h2 id="upcoming-title"><i class="bi bi-calendar-week me-1" aria-hidden="true"></i>Événements à venir</h2>
+        <a class="small" href="{{ url_for('events.agenda') }}">Calendrier complet</a>
+      </div>
+      <div class="panel-body py-1">
+        <h3 class="day-heading">7 prochains jours</h3>
+        {% if upcoming_7 %}<ul class="agenda-list">{% for item in upcoming_7 %}{{ m.agenda_row(item) }}{% endfor %}</ul>
+        {% else %}<p class="small text-secondary mb-2">Aucun événement.</p>{% endif %}
+        <h3 class="day-heading">Du 8ᵉ au 30ᵉ jour</h3>
+        {% if upcoming_30 %}<ul class="agenda-list">{% for item in upcoming_30 %}{{ m.agenda_row(item) }}{% endfor %}</ul>
+        {% else %}<p class="small text-secondary mb-2">Aucun événement.</p>{% endif %}
+      </div>
+    </section>
+  </div>
+
+  <div class="col-xl-5">
+    <section class="panel mb-3" aria-labelledby="activity-title">
+      <div class="panel-header"><h2 id="activity-title"><i class="bi bi-clock-history me-1" aria-hidden="true"></i>Activité récente</h2></div>
+      <div class="panel-body py-2">
+        {% if recent_apps %}
+        <div class="small text-secondary mb-1">Candidatures récemment modifiées</div>
+        <ul class="list-unstyled mb-3">
+          {% for a in recent_apps %}
+          <li class="d-flex justify-content-between gap-2 py-1 border-bottom">
+            <a class="text-truncate text-decoration-none" href="{{ url_for('applications.detail', app_id=a.id) }}">{{ a.title }}</a>
+            <span class="d-flex gap-2 align-items-center flex-shrink-0">{{ m.status_badge(a) }}<span class="small text-secondary tabular">{{ a.updated_at|fr_timestamp }}</span></span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        {% if recent_logs %}
+        <div class="small text-secondary mb-1">Journal</div>
+        <ul class="list-unstyled mb-0 small">
+          {% for log in recent_logs %}
+          <li class="py-1"><span class="text-secondary tabular">{{ log.created_at|fr_timestamp }}</span> — {{ log.message }}{% if log.application_id %} · <a href="{{ url_for('applications.detail', app_id=log.application_id) }}">{{ log.application_title }}</a>{% elif log.application_title %} · {{ log.application_title }}{% endif %}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        {% if not recent_apps and not recent_logs %}
+          {% call m.empty_state('bi-inbox', 'Aucune candidature pour l’instant', 'Ajoutez votre première candidature ou chargez les données d’exemple.') %}
+            <a class="btn btn-sm btn-primary" href="{{ url_for('applications.create', sector='public') }}">Ajouter un concours</a>
+            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('settings.demo') }}">Données d’exemple</a>
+          {% endcall %}
+        {% endif %}
+      </div>
+    </section>
+  </div>
+</div>
+
+<section aria-labelledby="charts-title">
+  <h2 id="charts-title" class="h6 text-secondary text-uppercase mb-2">Graphiques</h2>
+  <div class="row g-3">
+    <div class="col-md-6 col-xl-3"><div class="panel"><div class="panel-header"><h2>Candidatures par secteur</h2></div><div class="panel-body"><div class="chart-box" style="height:140px" data-chart-box><canvas id="chart-sector" role="img" aria-label="Candidatures par secteur : public {{ charts.sector['values'][0] }}, privé {{ charts.sector['values'][1] }}"></canvas></div></div></div></div>
+    <div class="col-md-6 col-xl-3"><div class="panel"><div class="panel-header"><h2>Taux de réponse</h2><span class="small text-secondary" title="Réponses ÷ candidatures envoyées, par secteur"><i class="bi bi-info-circle" aria-hidden="true"></i></span></div><div class="panel-body"><div class="chart-box" style="height:140px" data-chart-box><canvas id="chart-response" role="img" aria-label="Taux de réponse public et privé"></canvas></div><p class="small text-secondary mb-0 mt-2">Réponses ÷ candidatures envoyées (hors retirées).</p></div></div></div>
+    <div class="col-xl-6"><div class="panel"><div class="panel-header"><h2>Candidatures envoyées par mois</h2><span class="small text-secondary">selon la date d’envoi, 12 derniers mois</span></div><div class="panel-body"><div class="chart-box" data-chart-box><canvas id="chart-monthly" role="img" aria-label="Candidatures envoyées par mois et par secteur"></canvas></div></div></div></div>
+    <div class="col-12"><div class="panel"><div class="panel-header"><h2>Candidatures par statut</h2><a class="small" href="{{ url_for('dashboard.stats') }}">Tableaux détaillés</a></div><div class="panel-body"><div class="chart-box" style="height: {{ [160, 26 * (charts.status.labels|length) + 40]|max }}px" data-chart-box><canvas id="chart-status" role="img" aria-label="Répartition des candidatures par statut"></canvas></div></div></div></div>
+  </div>
+</section>
+<script type="application/json" id="chart-data">{{ charts|tojson }}</script>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.min.js') }}"></script>{% endblock %}

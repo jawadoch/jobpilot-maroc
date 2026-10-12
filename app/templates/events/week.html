@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Calendrier — semaine{% endblock %}
+{% block content %}
+{% set ref_date = days[0].isoformat() %}
+{% call m.page_header("Semaine du " ~ (days[0]|fr_date) ~ " au " ~ (days[-1]|fr_date), None, "bi-calendar-week") %}
+  <div class="btn-group btn-group-sm">
+    <a class="btn btn-outline-secondary" href="{{ url_for('events.agenda', vue='semaine', date=prev.isoformat(), type=kind, secteur=sector) }}" aria-label="Semaine précédente"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>
+    <a class="btn btn-outline-secondary" href="{{ url_for('events.agenda', vue='semaine', type=kind, secteur=sector) }}">Cette semaine</a>
+    <a class="btn btn-outline-secondary" href="{{ url_for('events.agenda', vue='semaine', date=next.isoformat(), type=kind, secteur=sector) }}" aria-label="Semaine suivante"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+  </div>
+  <a class="btn btn-sm btn-primary" href="{{ url_for('events.create') }}"><i class="bi bi-calendar-plus" aria-hidden="true"></i> Nouvelle étape</a>
+{% endcall %}
+{% include "events/_toolbar.html" %}
+<div class="calendar-grid week-grid">
+  {% for d in days %}
+  <div class="cal-cell {{ 'is-today' if d == today }}">
+    <div class="cal-day">{{ weekdays[loop.index0] }} {{ d.day }}/{{ '%02d'|format(d.month) }}</div>
+    {% for item in by_day.get(d, []) %}{% include "events/_cal_event.html" %}{% endfor %}
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

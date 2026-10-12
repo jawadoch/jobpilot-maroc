@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% set is_edit = application is not none %}
+{% block title %}{{ 'Modifier la candidature' if is_edit else 'Nouvelle candidature' }}{% endblock %}
+{% block content %}
+{% call m.page_header('Modifier : ' ~ application.title if is_edit else 'Nouvelle candidature', 'Les champs marqués * sont obligatoires. Les dates s’affichent au format JJ/MM/AAAA selon votre navigateur.', 'bi-pencil-square') %}
+  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('applications.detail', app_id=application.id) if is_edit else url_for('applications.index') }}">Annuler</a>
+{% endcall %}
+
+<form method="post" novalidate>
+  {{ form.csrf_token }}
+  {% if duplicate %}
+  <div class="alert alert-warning">
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" name="allow_duplicate" value="1" id="allow_duplicate">
+      <label class="form-check-label" for="allow_duplicate">Créer quand même (doublon de <a href="{{ url_for('applications.detail', app_id=duplicate.id) }}" target="_blank" rel="noopener">#{{ duplicate.id }}</a>)</label>
+    </div>
+  </div>
+  {% endif %}
+
+  <section class="form-section">
+    <h2><i class="bi bi-info-circle" aria-hidden="true"></i> Informations générales</h2>
+    <div class="row">
+      {{ m.field(form.title, 'col-md-6') }}
+      {{ m.field(form.organization, 'col-md-6') }}
+      <div class="col-md-3 mb-3">
+        {{ form.sector.label(class='form-label') }} <span class="text-danger" aria-hidden="true">*</span>
+        {{ form.sector(class='form-select', **{'data-sector-select': ''}) }}
+      </div>
+      {{ m.field(form.category, 'col-md-3') }}
+      {{ m.field(form.specialty, 'col-md-3', list='dl-specialty') }}
+      {{ m.field(form.work_mode, 'col-md-3') }}
+      {{ m.field(form.city, 'col-md-3', list='dl-cities') }}
+      {{ m.field(form.country, 'col-md-3', help='Ex. France pour une opportunité internationale.') }}
+      {{ m.field(form.source, 'col-md-3', list='dl-sources') }}
+      {{ m.field(form.reference, 'col-md-3') }}
+      {{ m.field(form.posting_url, 'col-md-12', placeholder='https://…') }}
+      {{ m.field(form.description, 'col-md-6', rows=4) }}
+      {{ m.field(form.notes, 'col-md-6', rows=4) }}
+    </div>
+  </section>
+
+  <section class="form-section">
+    <h2><i class="bi bi-signpost-split" aria-hidden="true"></i> Suivi</h2>
+    <div class="row">
+      {{ m.field(form.status, 'col-md-4', help='Le statut décrit où en est la candidature.') }}
+      {{ m.field(form.priority, 'col-md-2') }}
+      {{ m.field(form.date_discovered, 'col-md-3') }}
+      {{ m.field(form.date_applied, 'col-md-3', help='Renseignée automatiquement au passage à « envoyée » si vide.') }}
+      {{ m.field(form.next_action, 'col-md-8', help='L’action est distincte du statut : ce que vous devez faire ensuite.') }}
+      {{ m.field(form.next_action_due, 'col-md-4') }}
+      {{ m.field(form.force_status, 'col-12', help='Uniquement si vous devez enregistrer « Prête à envoyer » ou « Envoyée » avec des pièces obligatoires manquantes.') }}
+    </div>
+  </section>
+
+  <section class="form-section">
+    <h2><i class="bi bi-person-lines-fill" aria-hidden="true"></i> Contact (facultatif)</h2>
+    <p class="small text-secondary mt-n2">N’enregistrez que les coordonnées professionnelles utiles au suivi.</p>
+    <div class="row">
+      {{ m.field(form.contact_name, 'col-md-4') }}
+      {{ m.field(form.contact_email, 'col-md-4') }}
+      {{ m.field(form.contact_phone, 'col-md-4') }}
+    </div>
+  </section>
+
+  {% set pub = form.public_details %}
+  <section class="form-section" data-sector-section="public">
+    <h2><i class="bi bi-bank" aria-hidden="true"></i> Concours public</h2>
+    <div class="row">
+      {{ m.field(pub.administration, 'col-md-6') }}
+      {{ m.field(pub.competition_title, 'col-md-6') }}
+      {{ m.field(pub.competition_code, 'col-md-3') }}
+      {{ m.field(pub.grade, 'col-md-3') }}
+      {{ m.field(pub.scale, 'col-md-2') }}
+      {{ m.field(pub.specialty, 'col-md-4') }}
+      {{ m.field(pub.vacancies, 'col-md-2', help='Laisser vide si non indiqué.') }}
+      {{ m.field(pub.candidates_count, 'col-md-2') }}
+      {{ m.field(pub.region, 'col-md-4') }}
+      {{ m.field(pub.submission_method, 'col-md-4') }}
+      {{ m.field(pub.announcement_url, 'col-md-6', placeholder='https://…') }}
+      {{ m.field(pub.result_url, 'col-md-6', placeholder='https://…') }}
+    </div>
+    <h3 class="h6 text-secondary mt-1">Calendrier du concours</h3>
+    <p class="small text-secondary">Ces dates alimentent automatiquement le calendrier. Les épreuves (écrit, oral, entretien…) s’ajoutent comme <strong>étapes</strong> depuis la fiche, autant que nécessaire.</p>
+    <div class="row">
+      {{ m.field(pub.opening_date, 'col-md-3') }}
+      {{ m.field(pub.deadline_date, 'col-md-3') }}
+      {{ m.field(pub.deadline_time, 'col-md-2') }}
+      {{ m.field(pub.shortlist_date, 'col-md-2') }}
+      {{ m.field(pub.results_date, 'col-md-2') }}
+      {{ m.field(pub.result, 'col-md-3') }}
+    </div>
+    <h3 class="h6 text-secondary mt-1">Conditions et dossier</h3>
+    <div class="row">
+      {{ m.field(pub.eligibility, 'col-md-6') }}
+      {{ m.field(pub.required_diploma, 'col-md-6') }}
+      {{ m.field(pub.required_documents_text, 'col-md-6', help='Texte de l’annonce ; la checklist éditable se gère depuis l’onglet Dossier.') }}
+      {{ m.field(pub.mobility_required, 'col-md-6') }}
+      {{ m.field(pub.possible_assignment, 'col-md-6') }}
+      {{ m.field(pub.admin_notes, 'col-md-6') }}
+    </div>
+  </section>
+
+  {% set priv = form.private_details %}
+  <section class="form-section" data-sector-section="private">
+    <h2><i class="bi bi-building" aria-hidden="true"></i> Secteur privé</h2>
+    <p class="small text-secondary mt-n2">Le type de contrat correspond au champ « Catégorie / type de contrat ». Les informations salariales sont facultatives.</p>
+    <div class="row">
+      {{ m.field(priv.salary_min, 'col-md-2') }}
+      {{ m.field(priv.salary_max, 'col-md-2') }}
+      {{ m.field(priv.salary_expectation, 'col-md-2') }}
+      {{ m.field(priv.salary_frequency, 'col-md-2') }}
+      {{ m.field(priv.currency, 'col-md-2') }}
+      {{ m.field(priv.currency_other, 'col-md-2') }}
+      {{ m.field(priv.cv_document_id, 'col-md-6', help='Choisissez la variante de CV envoyée (bibliothèque de documents).') }}
+      {{ m.field(priv.cover_letter_document_id, 'col-md-6') }}
+      {{ m.field(priv.referral, 'col-md-6') }}
+      {{ m.field(priv.negotiation_status, 'col-md-3') }}
+      {{ m.field(priv.follow_up_date, 'col-md-3') }}
+      {{ m.field(priv.tech_assessment_required, 'col-md-4') }}
+      {{ m.field(priv.tech_assessment_date, 'col-md-4') }}
+      {{ m.field(priv.tech_assessment_time, 'col-md-4') }}
+      {{ m.field(priv.mobility_requirements, 'col-md-6') }}
+      {{ m.field(priv.relocation_notes, 'col-md-6') }}
+      {{ m.field(priv.interview_feedback, 'col-md-6') }}
+      {{ m.field(priv.hr_feedback, 'col-md-6') }}
+      {{ m.field(priv.offer_details, 'col-md-6') }}
+      {{ m.field(priv.rejection_reason, 'col-md-6') }}
+    </div>
+  </section>
+
+  <div class="sticky-actions d-flex gap-2">
+    <button class="btn btn-primary" type="submit"><i class="bi bi-check-lg" aria-hidden="true"></i> Enregistrer</button>
+    <a class="btn btn-outline-secondary" href="{{ url_for('applications.detail', app_id=application.id) if is_edit else url_for('applications.index') }}">Annuler</a>
+  </div>
+</form>
+
+<datalist id="dl-cities">{% for c in city_suggestions %}<option value="{{ c }}">{% endfor %}</datalist>
+<datalist id="dl-specialty">{% for s in specialty_suggestions %}<option value="{{ s }}">{% endfor %}</datalist>
+<datalist id="dl-sources">{% for s in source_suggestions %}<option value="{{ s }}">{% endfor %}</datalist>
+{% endblock %}

@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ app.title }}{% endblock %}
+{% block content %}
+{% set summary = app.checklist_summary %}
+<div class="page-header">
+  <div class="min-w-0">
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-1">
+      {{ m.sector_badge(app) }} {{ m.status_badge(app) }} {{ m.priority_badge(app.priority) }} {{ m.sample_badge(app) }}
+      {% if app.archived %}<span class="badge bg-light text-secondary border"><i class="bi bi-archive" aria-hidden="true"></i> Archivée</span>{% endif %}
+    </div>
+    <h1 class="h4 mb-0">{{ app.title }}</h1>
+    <div class="text-secondary">{{ app.organization }}{% if app.city %} · {{ app.city }}{% endif %}{% if app.country and app.country != 'Maroc' %} ({{ app.country }}){% endif %}{% if app.reference %} · Réf. {{ app.reference }}{% endif %}</div>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-sm btn-primary" href="{{ url_for('applications.edit', app_id=app.id) }}"><i class="bi bi-pencil" aria-hidden="true"></i> Modifier</a>
+    {{ m.post_button(url_for('applications.duplicate', app_id=app.id), 'Dupliquer', 'bi-copy', confirm='Créer une copie de cette candidature (sans les étapes ni les documents) ?') }}
+    {{ m.post_button(url_for('applications.toggle_archive', app_id=app.id), 'Désarchiver' if app.archived else 'Archiver', 'bi-archive') }}
+    {{ m.post_button(url_for('applications.delete', app_id=app.id), 'Supprimer', 'bi-trash', 'btn btn-sm btn-outline-danger', confirm='Supprimer définitivement « ' ~ app.title ~ ' » ainsi que ses étapes et sa checklist ? Les documents restent dans la bibliothèque. Cette action est irréversible.') }}
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-8">
+    <div class="panel h-100">
+      <div class="panel-body">
+        <div class="row g-3">
+          <div class="col-sm-6">
+            <div class="small text-secondary">Prochaine action</div>
+            <div class="fw-semibold">{{ app.next_action or 'Aucune action définie' }}</div>
+            {% if app.next_action_due %}<div class="small"><span class="tabular">{{ app.next_action_due|fr_date }}</span> {{ deadline_badge(app.next_action_due) }}</div>{% endif %}
+          </div>
+          <div class="col-sm-6">
+            <div class="small text-secondary">Prochaine échéance</div>
+            {% set nxt = app.pending_events|first %}
+            {% if nxt %}<div class="fw-semibold">{{ nxt.display_title }}</div><div class="small"><span class="tabular">{{ nxt.event_date|fr_date }}{% if nxt.event_time %} à {{ nxt.event_time|fr_time }}{% endif %}</span> {{ deadline_badge(nxt.event_date) }}</div>
+            {% else %}<div class="text-secondary">Aucune étape planifiée</div>{% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <form method="post" action="{{ url_for('applications.change_status', app_id=app.id) }}" class="panel h-100">
+      <div class="panel-body">
+        {{ status_form.csrf_token }}
+        <label class="form-label small text-secondary mb-1" for="status">Changer le statut</label>
+        <div class="input-group input-group-sm mb-2">
+          {{ status_form.status(class='form-select') }}
+          <button class="btn btn-outline-primary" type="submit">Appliquer</button>
+        </div>
+        <div class="form-check small">
+          {{ status_form.force_status(class='form-check-input') }}
+          {{ status_form.force_status.label(class='form-check-label') }}
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% set tabs = [('apercu', 'Aperçu', 'bi-card-text'), ('etapes', 'Étapes & calendrier', 'bi-calendar3'), ('dossier', 'Dossier & documents', 'bi-folder2-open'), ('preparation', 'Préparation', 'bi-journal-check'), ('historique', 'Historique', 'bi-clock-history')] %}
+{% set tab = tab if tab in tabs|map(attribute=0)|list else 'apercu' %}
+<ul class="nav nav-tabs" role="tablist">
+  {% for key, label, icon in tabs %}
+  <li class="nav-item" role="presentation">
+    <button class="nav-link {{ 'active' if tab == key }}" id="tab-{{ key }}" data-bs-toggle="tab" data-bs-target="#pane-{{ key }}" data-tab-name="{{ key }}" type="button" role="tab" aria-controls="pane-{{ key }}" aria-selected="{{ 'true' if tab == key else 'false' }}">
+      <i class="bi {{ icon }}" aria-hidden="true"></i> {{ label }}
+      {% if key == 'etapes' %}<span class="badge text-bg-light border">{{ app.pending_events|length }}</span>{% endif %}
+      {% if key == 'dossier' and summary.required %}<span class="badge {{ 'bg-success-subtle text-success-emphasis' if summary.ready else 'bg-danger-subtle text-danger-emphasis' }}">{{ summary.done }}/{{ summary.required }}</span>{% endif %}
+    </button>
+  </li>
+  {% endfor %}
+</ul>
+
+<div class="tab-content panel border-top-0 rounded-top-0 mb-3">
+  {# ---------------- Aperçu ---------------- #}
+  <div class="tab-pane fade {{ 'show active' if tab == 'apercu' }} panel-body" id="pane-apercu" role="tabpanel" aria-labelledby="tab-apercu" tabindex="0">
+    <div class="row g-4">
+      <div class="col-lg-6">
+        <h2 class="h6">Informations générales</h2>
+        <dl class="dl-compact">
+          <dt>Catégorie</dt><dd>{{ app.category_label }}</dd>
+          <dt>Spécialité</dt><dd>{{ app.specialty or '—' }}</dd>
+          <dt>Mode de travail</dt><dd>{{ app.work_mode_label }}</dd>
+          <dt>Source</dt><dd>{{ app.source or '—' }}</dd>
+          <dt>Lien de l’offre</dt><dd>{% if app.posting_url %}<a href="{{ app.posting_url }}" target="_blank" rel="noopener noreferrer">{{ app.posting_url|truncate(60) }} <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>{% else %}—{% endif %}</dd>
+          <dt>Découverte</dt><dd>{{ app.date_discovered|fr_date }}</dd>
+          <dt>Envoi</dt><dd>{{ app.date_applied|fr_date }}</dd>
+          <dt>Contact</dt><dd>{{ app.contact_name or '—' }}{% if app.contact_email %}<br><span class="small">{{ app.contact_email }}</span>{% endif %}{% if app.contact_phone %}<br><span class="small">{{ app.contact_phone }}</span>{% endif %}</dd>
+          <dt>Créée le</dt><dd>{{ app.created_at|fr_timestamp }}</dd>
+          <dt>Mise à jour</dt><dd>{{ app.updated_at|fr_timestamp }}</dd>
+        </dl>
+        {% if app.description %}<h3 class="h6 mt-3">Description</h3><p class="small">{{ app.description|nl2br }}</p>{% endif %}
+        {% if app.notes %}<h3 class="h6 mt-3">Notes</h3><p class="small">{{ app.notes|nl2br }}</p>{% endif %}
+      </div>
+      <div class="col-lg-6">
+        {% if app.sector == 'public' and app.public_details %}{% set p = app.public_details %}
+        <h2 class="h6"><i class="bi bi-bank" aria-hidden="true"></i> Concours public</h2>
+        <dl class="dl-compact">
+          <dt>Administration</dt><dd>{{ p.administration or '—' }}</dd>
+          <dt>Concours</dt><dd>{{ p.competition_title or '—' }}</dd>
+          <dt>Code</dt><dd>{{ p.competition_code or '—' }}</dd>
+          <dt>Grade / échelle</dt><dd>{{ p.grade or '—' }}{% if p.scale %} · {{ p.scale }}{% endif %}</dd>
+          <dt>Spécialité</dt><dd>{{ p.specialty or '—' }}</dd>
+          <dt>Postes</dt><dd>{{ p.vacancies if p.vacancies is not none else 'Non indiqué' }}</dd>
+          <dt>Candidats</dt><dd>{{ p.candidates_count if p.candidates_count is not none else 'Inconnu' }}</dd>
+          <dt>Région</dt><dd>{{ p.region or '—' }}</dd>
+          <dt>Dépôt</dt><dd>{{ p.submission_method_label }}</dd>
+          <dt>Ouverture</dt><dd>{{ p.opening_date|fr_date }}</dd>
+          <dt>Date limite</dt><dd>{% if p.deadline_date %}<span class="tabular">{{ p.deadline_date|fr_date }}{% if p.deadline_time %} à {{ p.deadline_time|fr_time }}{% endif %}</span> {{ deadline_badge(p.deadline_date, app.deadline_event.done if app.deadline_event else False) }}{% else %}—{% endif %}</dd>
+          <dt>Présélectionnés</dt><dd>{{ p.shortlist_date|fr_date }}</dd>
+          <dt>Résultats</dt><dd>{{ p.results_date|fr_date }}</dd>
+          <dt>Résultat</dt><dd><strong>{{ p.result_label }}</strong>{% if p.result_url %} · <a href="{{ p.result_url }}" target="_blank" rel="noopener noreferrer">résultats officiels</a>{% endif %}</dd>
+          <dt>Annonce officielle</dt><dd>{% if p.announcement_url %}<a href="{{ p.announcement_url }}" target="_blank" rel="noopener noreferrer">Ouvrir <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>{% else %}—{% endif %}</dd>
+        </dl>
+        {% for label, value in [('Conditions d’éligibilité', p.eligibility), ('Diplôme exigé et équivalences', p.required_diploma), ('Pièces exigées (annonce)', p.required_documents_text), ('Mobilité', p.mobility_required), ('Affectation possible', p.possible_assignment), ('Notes administratives', p.admin_notes)] %}
+          {% if value %}<h3 class="h6 mt-3">{{ label }}</h3><p class="small mb-0">{{ value|nl2br }}</p>{% endif %}
+        {% endfor %}
+        {% elif app.sector == 'private' and app.private_details %}{% set p = app.private_details %}
+        <h2 class="h6"><i class="bi bi-building" aria-hidden="true"></i> Secteur privé</h2>
+        <dl class="dl-compact">
+          <dt>Contrat</dt><dd>{{ app.category_label }}</dd>
+          <dt>Salaire proposé</dt><dd>{% if p.salary_min or p.salary_max %}{{ p.salary_min|money(p.currency_label) if p.salary_min else '' }}{% if p.salary_min and p.salary_max %} – {% endif %}{{ p.salary_max|money(p.currency_label) if p.salary_max else '' }} {{ C.SALARY_FREQUENCIES.get(p.salary_frequency or '', '')|lower }}{% else %}Non précisé{% endif %}</dd>
+          <dt>Mes prétentions</dt><dd>{{ p.salary_expectation|money(p.currency_label) if p.salary_expectation else 'Non précisé' }}</dd>
+          <dt>CV envoyé</dt><dd>{% if p.cv_document %}<a href="{{ url_for('documents.detail', doc_id=p.cv_document.id) }}">{{ p.cv_document.display_name }}</a>{% else %}—{% endif %}</dd>
+          <dt>Lettre envoyée</dt><dd>{% if p.cover_letter_document %}<a href="{{ url_for('documents.detail', doc_id=p.cover_letter_document.id) }}">{{ p.cover_letter_document.display_name }}</a>{% else %}—{% endif %}</dd>
+          <dt>Recommandation</dt><dd>{{ p.referral or '—' }}</dd>
+          <dt>Test technique</dt><dd>{% if p.tech_assessment_required or p.tech_assessment_date %}Oui{% if p.tech_assessment_date %} — avant le {{ p.tech_assessment_date|fr_date }}{% if p.tech_assessment_time %} {{ p.tech_assessment_time|fr_time }}{% endif %}{% endif %}{% else %}Non{% endif %}</dd>
+          <dt>Relance</dt><dd>{{ p.follow_up_date|fr_date }}</dd>
+          <dt>Négociation</dt><dd>{{ C.NEGOTIATION_STATUSES.get(p.negotiation_status or '', '—') }}</dd>
+        </dl>
+        {% for label, value in [('Télétravail / mobilité', p.mobility_requirements), ('Relocalisation / international', p.relocation_notes), ('Retours d’entretien', p.interview_feedback), ('Retours RH', p.hr_feedback), ('Détails de l’offre', p.offer_details), ('Motif de refus / retrait', p.rejection_reason)] %}
+          {% if value %}<h3 class="h6 mt-3">{{ label }}</h3><p class="small mb-0">{{ value|nl2br }}</p>{% endif %}
+        {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ---------------- Étapes ---------------- #}
+  <div class="tab-pane fade {{ 'show active' if tab == 'etapes' }} panel-body" id="pane-etapes" role="tabpanel" aria-labelledby="tab-etapes" tabindex="0">
+    <div class="d-flex flex-wrap justify-content-between gap-2 mb-2">
+      <p class="small text-secondary mb-0">Chaque étape (écrit, oral, entretien, test, relance…) est suivie indépendamment. Les échéances marquées <i class="bi bi-link-45deg" aria-hidden="true"></i> proviennent de la fiche.</p>
+      <div class="d-flex gap-1 flex-wrap">
+        {% set quick = [('written', 'Écrit'), ('oral', 'Oral'), ('interview', 'Entretien'), ('test', 'Test'), ('other', 'Autre')] if app.sector == 'public' else [('interview', 'Entretien'), ('interview_hr', 'Entretien RH'), ('test', 'Test'), ('followup', 'Relance'), ('other', 'Autre')] %}
+        {% for kind, label in quick %}
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('events.create', application_id=app.id, type=kind) }}"><i class="bi bi-plus" aria-hidden="true"></i> {{ label }}</a>
+        {% endfor %}
+      </div>
+    </div>
+    {% if app.events %}
+    <div class="table-responsive">
+      <table class="table table-compact align-middle">
+        <thead><tr><th scope="col">Date</th><th scope="col">Étape</th><th scope="col">Lieu / détails</th><th scope="col">État</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+        <tbody>
+        {% for ev in app.events %}
+          <tr class="{{ 'text-secondary' if ev.done }}">
+            <td class="text-nowrap tabular">{{ ev.event_date|fr_date }}{% if ev.event_time %}<br><span class="small">{{ ev.event_time|fr_time }}</span>{% endif %}</td>
+            <td><i class="bi {{ ev.icon }}" aria-hidden="true"></i> <span class="fw-semibold">{{ ev.display_title }}</span>{% if ev.auto_key %} <i class="bi bi-link-45deg text-secondary" title="Synchronisée depuis la fiche" aria-label="Synchronisée depuis la fiche"></i>{% endif %}<div class="small text-secondary">{{ ev.kind_label }}</div></td>
+            <td class="small">{{ ev.location or '' }}{% if ev.details %}<div class="text-secondary">{{ ev.details|truncate(120) }}</div>{% endif %}{% if ev.outcome %}<div><strong>Retour :</strong> {{ ev.outcome|truncate(120) }}</div>{% endif %}</td>
+            <td>{{ deadline_badge(ev.event_date, ev.done) }}</td>
+            <td class="text-end text-nowrap">
+              {{ m.post_button(url_for('events.toggle_done', event_id=ev.id), None, 'bi-arrow-counterclockwise' if ev.done else 'bi-check2', 'btn btn-sm btn-outline-secondary' if ev.done else 'btn btn-sm btn-outline-success', title='Rouvrir' if ev.done else 'Marquer comme terminée') }}
+              <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('events.edit', event_id=ev.id) }}" title="Modifier" aria-label="Modifier l’étape"><i class="bi bi-pencil" aria-hidden="true"></i></a>
+              {% if not ev.auto_key %}{{ m.post_button(url_for('events.delete', event_id=ev.id), None, 'bi-trash', 'btn btn-sm btn-outline-danger', confirm='Supprimer l’étape « ' ~ ev.display_title ~ ' » ?', title='Supprimer') }}{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      {% call m.empty_state('bi-calendar-x', 'Aucune étape', 'Ajoutez une épreuve écrite, un oral, un entretien ou un test. Les dates limites saisies dans la fiche apparaissent ici automatiquement.') %}{% endcall %}
+    {% endif %}
+  </div>
+
+  {# ---------------- Dossier ---------------- #}
+  <div class="tab-pane fade {{ 'show active' if tab == 'dossier' }} panel-body" id="pane-dossier" role="tabpanel" aria-labelledby="tab-dossier" tabindex="0">
+    <div class="row g-4">
+      <div class="col-lg-7">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+          <h2 class="h6 mb-0">Checklist du dossier</h2>
+          {{ m.post_button(url_for('applications.apply_template', app_id=app.id), 'Ajouter les pièces du modèle', 'bi-list-check') }}
+        </div>
+        {% if summary.required %}
+        <div class="d-flex align-items-center gap-3 mb-2 flex-wrap">
+          <div style="min-width: 200px" class="flex-grow-1">{{ m.progress(summary.percent, 'Pièces obligatoires complétées') }}</div>
+          {% if summary.ready %}
+            <span class="badge bg-success-subtle text-success-emphasis"><i class="bi bi-check-circle" aria-hidden="true"></i> Prêt à être envoyé</span>
+          {% else %}
+            <span class="badge bg-danger-subtle text-danger-emphasis"><i class="bi bi-x-circle" aria-hidden="true"></i> {{ summary.missing|length }} pièce(s) obligatoire(s) manquante(s)</span>
+          {% endif %}
+        </div>
+        {% endif %}
+        {% if checklist_rows %}
+        <div>
+          {% for row in checklist_rows %}{% set item = row.item %}
+          <div class="checklist-item">
+            <form method="post" action="{{ url_for('applications.toggle_checklist_item', app_id=app.id, item_id=item.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-sm {{ 'btn-success' if item.done else 'btn-outline-secondary' }}" type="submit" title="{{ 'Marquer à faire' if item.done else 'Marquer comme complété' }}" aria-label="{{ 'Marquer à faire' if item.done else 'Marquer comme complété' }} : {{ item.label }}" aria-pressed="{{ 'true' if item.done else 'false' }}"><i class="bi {{ 'bi-check-lg' if item.done else 'bi-square' }}" aria-hidden="true"></i></button>
+            </form>
+            <div class="flex-grow-1 min-w-0">
+              <div class="{{ 'text-decoration-line-through text-secondary' if item.done }}">{{ item.label }}</div>
+              <div class="small d-flex flex-wrap gap-2 align-items-center">
+                {% if item.required %}<span class="text-danger-emphasis">Obligatoire</span>{% else %}<span class="text-secondary">Facultatif</span>{% endif %}
+                {% if row.state == 'done' %}<span class="badge bg-success-subtle text-success-emphasis">Complété</span>
+                {% elif row.state == 'attached' %}<span class="badge bg-info-subtle text-info-emphasis">Document associé</span>
+                {% elif row.state == 'available' %}<span class="badge bg-primary-subtle text-primary-emphasis">Disponible dans la bibliothèque</span>
+                {% else %}<span class="badge {{ 'bg-danger-subtle text-danger-emphasis' if item.required else 'bg-light text-secondary border' }}">Manquant</span>{% endif %}
+                {% if item.document %}<a href="{{ url_for('documents.detail', doc_id=item.document.id) }}"><i class="bi bi-paperclip" aria-hidden="true"></i> {{ item.document.display_name }}</a>{% endif %}
+              </div>
+            </div>
+            <div class="checklist-controls">
+            <form method="post" action="{{ url_for('applications.link_checklist_item', app_id=app.id, item_id=item.id) }}" class="d-flex gap-1">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <label class="visually-hidden" for="link-{{ item.id }}">Associer un document à {{ item.label }}</label>
+              <select id="link-{{ item.id }}" name="document_id" class="form-select form-select-sm" data-autosubmit>
+                <option value="0">{{ 'Associer un document…' if not item.document_id else '— Retirer le document —' }}</option>
+                {% if row.candidates %}<optgroup label="Même catégorie">{% for d in row.candidates %}<option value="{{ d.id }}" {{ 'selected' if d.id == item.document_id }}>{{ d.display_name }}</option>{% endfor %}</optgroup>{% endif %}
+                <optgroup label="Tous les documents">{% for d in all_docs if d not in row.candidates %}<option value="{{ d.id }}" {{ 'selected' if d.id == item.document_id }}>{{ d.category_label }} — {{ d.display_name }}</option>{% endfor %}</optgroup>
+              </select>
+              <noscript><button class="btn btn-sm btn-outline-secondary" type="submit">OK</button></noscript>
+            </form>
+            {{ m.post_button(url_for('applications.toggle_checklist_item', app_id=app.id, item_id=item.id), None, 'bi-asterisk', 'btn btn-sm btn-outline-secondary', hidden={'field': 'required'}, title='Basculer obligatoire / facultatif') }}
+            {{ m.post_button(url_for('applications.delete_checklist_item', app_id=app.id, item_id=item.id), None, 'bi-trash', 'btn btn-sm btn-outline-danger', confirm='Retirer « ' ~ item.label ~ ' » de la checklist ?', title='Retirer') }}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+          <p class="small text-secondary">La checklist est vide. Ajoutez les pièces exigées par l’annonce ou appliquez le modèle.</p>
+        {% endif %}
+        <form method="post" action="{{ url_for('applications.add_checklist_item', app_id=app.id) }}" class="row g-2 align-items-end mt-2">
+          {{ checklist_form.csrf_token }}
+          <div class="col-md-5"><label class="form-label small mb-1" for="label">Nouvelle pièce</label>{{ checklist_form.label(class='form-control form-control-sm', placeholder='ex. Attestation d’équivalence') }}</div>
+          <div class="col-md-4"><label class="form-label small mb-1" for="category">Catégorie</label>{{ checklist_form.category(class='form-select form-select-sm') }}</div>
+          <div class="col-md-2"><div class="form-check">{{ checklist_form.required(class='form-check-input') }}{{ checklist_form.required.label(class='form-check-label small') }}</div></div>
+          <div class="col-md-1"><button class="btn btn-sm btn-outline-primary w-100" type="submit" aria-label="Ajouter la pièce"><i class="bi bi-plus-lg" aria-hidden="true"></i></button></div>
+        </form>
+      </div>
+      <div class="col-lg-5">
+        <h2 class="h6">Documents rattachés</h2>
+        {% if app.document_links %}
+        <ul class="list-unstyled mb-3">
+          {% for link in app.document_links %}{% set d = link.document %}
+          <li class="d-flex justify-content-between align-items-center gap-2 py-1 border-bottom">
+            <div class="min-w-0">
+              <a href="{{ url_for('documents.detail', doc_id=d.id) }}">{{ d.display_name }}</a>
+              <div class="small text-secondary">{{ d.category_label }}{% if link.purpose %} · {{ link.purpose }}{% endif %}{% if d.is_expired %} · <span class="text-danger">expiré</span>{% endif %}{% if not d.has_file %} · sans fichier{% endif %}</div>
+            </div>
+            <div class="text-nowrap">
+              {% if d.has_file %}<a class="btn btn-sm btn-outline-secondary" href="{{ url_for('documents.download', doc_id=d.id) }}" title="Télécharger" aria-label="Télécharger {{ d.name }}"><i class="bi bi-download" aria-hidden="true"></i></a>{% endif %}
+              {{ m.post_button(url_for('applications.detach_document', app_id=app.id, doc_id=d.id), None, 'bi-x-lg', 'btn btn-sm btn-outline-danger', confirm='Détacher ce document de la candidature ? (il reste dans la bibliothèque)', title='Détacher') }}
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}<p class="small text-secondary">Aucun document rattaché.</p>{% endif %}
+        {% if attach_form.document_id.choices %}
+        <form method="post" action="{{ url_for('applications.attach_document', app_id=app.id) }}" class="row g-2 align-items-end">
+          {{ attach_form.csrf_token }}
+          <div class="col-12"><label class="form-label small mb-1" for="document_id">{{ attach_form.document_id.label.text }}</label>{{ attach_form.document_id(class='form-select form-select-sm') }}</div>
+          <div class="col-8">{{ attach_form.purpose(class='form-control form-control-sm') }}</div>
+          <div class="col-4"><button class="btn btn-sm btn-outline-primary w-100" type="submit">Rattacher</button></div>
+        </form>
+        {% endif %}
+        <a class="small d-inline-block mt-2" href="{{ url_for('documents.create') }}"><i class="bi bi-upload" aria-hidden="true"></i> Ajouter un document à la bibliothèque</a>
+      </div>
+    </div>
+  </div>
+
+  {# ---------------- Préparation ---------------- #}
+  <div class="tab-pane fade {{ 'show active' if tab == 'preparation' }} panel-body" id="pane-preparation" role="tabpanel" aria-labelledby="tab-preparation" tabindex="0">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h2 class="h6 mb-0">Sujets de révision liés</h2>
+      <a class="btn btn-sm btn-outline-primary" href="{{ url_for('preparation.create', application_id=app.id) }}"><i class="bi bi-plus" aria-hidden="true"></i> Ajouter un sujet</a>
+    </div>
+    {% if app.prep_topics %}
+    <div class="table-responsive"><table class="table table-compact align-middle">
+      <thead><tr><th scope="col">Matière</th><th scope="col">Thème</th><th scope="col">Confiance</th><th scope="col">État</th><th scope="col">Prochaine révision</th></tr></thead>
+      <tbody>
+      {% for t in app.prep_topics %}
+      <tr><td class="small">{{ t.subject.name }}</td><td><a href="{{ url_for('preparation.edit', topic_id=t.id) }}">{{ t.topic }}</a></td>
+        <td><span class="confidence-dots" aria-label="Confiance {{ t.confidence }} sur 5">{% for i in range(1, 6) %}<i class="bi bi-circle-fill {{ '' if i <= t.confidence else 'off' }}" aria-hidden="true"></i>{% endfor %}</span></td>
+        <td><span class="badge {{ t.status_badge }}">{{ t.status_label }}</span></td><td class="small tabular">{{ t.next_revision|fr_date }}</td></tr>
+      {% endfor %}
+      </tbody></table></div>
+    {% else %}<p class="small text-secondary">Aucun sujet lié à cette candidature.</p>{% endif %}
+  </div>
+
+  {# ---------------- Historique ---------------- #}
+  <div class="tab-pane fade {{ 'show active' if tab == 'historique' }} panel-body" id="pane-historique" role="tabpanel" aria-labelledby="tab-historique" tabindex="0">
+    {% if logs %}
+    <ul class="list-unstyled small mb-0">{% for log in logs %}<li class="py-1 border-bottom"><span class="text-secondary tabular">{{ log.created_at|fr_timestamp }}</span> — {{ log.message }}</li>{% endfor %}</ul>
+    {% else %}<p class="small text-secondary mb-0">Aucune activité enregistrée.</p>{% endif %}
+  </div>
+</div>
+{% endblock %}

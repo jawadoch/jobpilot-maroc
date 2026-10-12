@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Calendrier et échéances{% endblock %}
+{% block content %}
+{% call m.page_header("Calendrier et échéances", "Dates limites, épreuves, entretiens, tests, relances et publications de résultats.", "bi-calendar3") %}
+  <a class="btn btn-sm btn-primary" href="{{ url_for('events.create') }}"><i class="bi bi-calendar-plus" aria-hidden="true"></i> Nouvelle étape</a>
+{% endcall %}
+{% include "events/_toolbar.html" %}
+
+<ul class="nav nav-pills nav-sm mb-2 small">
+  {% for key, label in ranges.items() %}
+  <li class="nav-item"><a class="nav-link py-1 px-2 {{ 'active' if rng == key }}" href="{{ url_for('events.agenda', periode=key, type=kind, secteur=sector, cloturees='1' if include_closed else None) }}">{{ label }}</a></li>
+  {% endfor %}
+</ul>
+
+<div class="panel">
+  <div class="panel-body py-1">
+  {% if groups %}
+    {% for day, items in groups %}
+      <h2 class="day-heading {{ 'is-today' if day == today }}">{{ day|fr_long_date }}{% if day == today %} — aujourd’hui{% endif %}</h2>
+      <ul class="agenda-list">{% for item in items %}{{ m.agenda_row(item) }}{% endfor %}</ul>
+    {% endfor %}
+  {% else %}
+    {% call m.empty_state('bi-calendar-check', 'Aucun événement pour cette période') %}
+      <a class="btn btn-sm btn-outline-primary" href="{{ url_for('events.create') }}">Ajouter une étape</a>
+    {% endcall %}
+  {% endif %}
+  </div>
+</div>
+{% endblock %}

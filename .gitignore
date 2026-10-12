@@ -1,0 +1,15 @@
+# Environnement Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Données personnelles : base, sauvegardes, clé secrète, documents
+instance/
+uploads/
+.env
+
+# Éditeurs / système
+.vscode/
+.idea/
+Thumbs.db

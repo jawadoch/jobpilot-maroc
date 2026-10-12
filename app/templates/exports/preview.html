@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Aperçu de l’import{% endblock %}
+{% block content %}
+{% set errors = preview.rows|selectattr('errors')|list %}
+{% set dups = preview.rows|rejectattr('errors')|selectattr('duplicate')|list %}
+{% call m.page_header("Aperçu de l’import", preview.rows|length ~ " ligne(s) lue(s)", "bi-eye") %}{% endcall %}
+<div class="stat-grid mb-3">
+  <div class="stat"><div class="stat-label"><i class="bi bi-check-circle" aria-hidden="true"></i> À importer</div><div class="stat-value text-success-emphasis">{{ preview.valid }}</div></div>
+  <div class="stat"><div class="stat-label"><i class="bi bi-files" aria-hidden="true"></i> Doublons ignorés</div><div class="stat-value">{{ dups|length }}</div></div>
+  <div class="stat"><div class="stat-label"><i class="bi bi-x-octagon" aria-hidden="true"></i> Lignes en erreur</div><div class="stat-value text-danger-emphasis">{{ errors|length }}</div></div>
+</div>
+<div class="panel mb-3">
+  <div class="table-responsive">
+    <table class="table table-compact align-middle">
+      <thead><tr><th scope="col">Ligne</th><th scope="col">Résultat</th><th scope="col">Titre</th><th scope="col">Organisation</th><th scope="col">Secteur</th><th scope="col">Statut</th><th scope="col">Ville</th><th scope="col">Date limite</th></tr></thead>
+      <tbody>
+      {% for row in preview.rows %}{% set d = row.data %}
+        <tr class="{{ 'table-danger' if row.errors else ('table-warning' if row.duplicate else '') }}">
+          <td class="tabular">{{ row.line }}</td>
+          <td class="small">{% if row.errors %}<i class="bi bi-x-octagon text-danger" aria-hidden="true"></i> {{ row.errors|join(' ; ') }}{% elif row.duplicate %}<i class="bi bi-files" aria-hidden="true"></i> Doublon : {{ row.duplicate }}{% else %}<i class="bi bi-check-circle text-success" aria-hidden="true"></i> OK{% endif %}</td>
+          <td>{{ d.title }}</td><td>{{ d.organization }}</td>
+          <td class="small">{{ C.SECTORS.get(d.sector, '—') }}</td>
+          <td class="small">{{ d.status or '—' }}</td>
+          <td class="small">{{ d.city or '—' }}</td>
+          <td class="small tabular">{{ d.deadline|fr_date }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<form method="post" action="{{ url_for('exports.import_confirm') }}" class="d-flex gap-2">
+  {{ confirm_form.csrf_token }}{{ confirm_form.token }}
+  <button class="btn btn-primary" type="submit" name="action" value="importer" {{ 'disabled' if not preview.valid }}><i class="bi bi-check-lg" aria-hidden="true"></i> Importer {{ preview.valid }} candidature(s)</button>
+  <button class="btn btn-outline-secondary" type="submit" name="action" value="annuler">Annuler</button>
+</form>
+{% endblock %}

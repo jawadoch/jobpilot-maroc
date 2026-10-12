@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Paramètres — profil{% endblock %}
+{% block content %}
+{% call m.page_header("Paramètres", "Profil professionnel, statuts, modèles, données et sauvegardes.", "bi-gear") %}{% endcall %}
+{% include "settings/_nav.html" %}
+<form method="post" novalidate>
+  {{ form.csrf_token }}
+  <section class="form-section">
+    <h2><i class="bi bi-person" aria-hidden="true"></i> Identité</h2>
+    <div class="row">
+      {{ m.field(form.full_name, 'col-md-4') }}
+      {{ m.field(form.headline, 'col-md-8') }}
+      {{ m.field(form.email, 'col-md-4') }}
+      {{ m.field(form.phone, 'col-md-4') }}
+      {{ m.field(form.linkedin, 'col-md-4') }}
+    </div>
+  </section>
+  <section class="form-section">
+    <h2><i class="bi bi-mortarboard" aria-hidden="true"></i> Formation</h2>
+    <div class="row">
+      {{ m.field(form.degree, 'col-md-6') }}
+      {{ m.field(form.degree_school, 'col-md-4') }}
+      {{ m.field(form.degree_year, 'col-md-2') }}
+      {{ m.field(form.previous_degree, 'col-md-6') }}
+      {{ m.field(form.previous_school, 'col-md-4') }}
+      {{ m.field(form.previous_year, 'col-md-2') }}
+    </div>
+  </section>
+  <section class="form-section">
+    <h2><i class="bi bi-bullseye" aria-hidden="true"></i> Recherche</h2>
+    <div class="row">
+      {{ m.field(form.domains, 'col-md-12', help='Proposés comme suggestions pour le champ « Spécialité ».') }}
+      {{ m.field(form.location, 'col-md-4') }}
+      {{ m.field(form.target_cities, 'col-md-8', help='Proposées comme suggestions pour le champ « Ville ».') }}
+      {{ m.field(form.objective, 'col-md-12') }}
+      {{ m.field(form.notes, 'col-md-12') }}
+    </div>
+  </section>
+  <div class="sticky-actions"><button class="btn btn-primary" type="submit"><i class="bi bi-check-lg" aria-hidden="true"></i> Enregistrer le profil</button></div>
+</form>
+{% endblock %}

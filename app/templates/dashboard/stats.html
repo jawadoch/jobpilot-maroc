@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Statistiques{% endblock %}
+{% block content %}
+{% set d = s.dashboard %}
+{% call m.page_header("Statistiques", "Calculées à partir des enregistrements de la base, archives incluses.", "bi-bar-chart") %}
+  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('exports.export_csv', archived='all') }}"><i class="bi bi-filetype-csv" aria-hidden="true"></i> Exporter en CSV</a>
+{% endcall %}
+
+<div class="alert alert-light border small">
+  <strong>Définitions.</strong> Une candidature est <em>envoyée</em> si son statut est de type « envoyée », « réponse », « offre », « acceptée », « refus » ou « sans réponse / clôturée » (les candidatures retirées et celles en préparation sont exclues).
+  Le <em>taux de réponse</em> = candidatures ayant reçu une suite (présélection, convocation, test, entretien, liste d’attente, offre, acceptation ou refus) ÷ candidatures envoyées.
+  Le type de chaque statut se règle dans <a href="{{ url_for('settings.statuses') }}">Paramètres › Statuts</a>.
+</div>
+
+<div class="stat-grid mb-3">
+  <div class="stat"><div class="stat-label">Total</div><div class="stat-value">{{ d.total }}</div></div>
+  <div class="stat"><div class="stat-label">Actives</div><div class="stat-value">{{ d.active }}</div></div>
+  <div class="stat"><div class="stat-label">Envoyées</div><div class="stat-value">{{ d.response.submitted }}</div></div>
+  <div class="stat"><div class="stat-label">Avec réponse</div><div class="stat-value">{{ d.response.responded }}</div></div>
+  <div class="stat"><div class="stat-label">Taux de réponse</div><div class="stat-value">{% if d.response.rate is not none %}{{ d.response.rate|fr_number(1) }}&nbsp;%{% else %}—{% endif %}</div></div>
+  <div class="stat"><div class="stat-label">Offres</div><div class="stat-value">{{ d.offers }}</div></div>
+  <div class="stat"><div class="stat-label">Refus</div><div class="stat-value">{{ d.rejections }}</div></div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-6"><div class="panel"><div class="panel-header"><h2>Candidatures envoyées par mois</h2></div><div class="panel-body"><div class="chart-box" data-chart-box><canvas id="chart-monthly" role="img" aria-label="Candidatures envoyées par mois"></canvas></div></div></div></div>
+  <div class="col-lg-6"><div class="panel"><div class="panel-header"><h2>Taux de réponse par secteur</h2></div><div class="panel-body"><div class="chart-box" style="height:140px" data-chart-box><canvas id="chart-response" role="img" aria-label="Taux de réponse par secteur"></canvas></div>
+    <table class="table table-sm table-compact mt-3"><thead><tr><th scope="col">Secteur</th><th scope="col" class="text-end">Envoyées</th><th scope="col" class="text-end">Réponses</th><th scope="col" class="text-end">Taux</th></tr></thead><tbody>
+      {% for key, label in C.SECTORS.items() %}{% set r = s.response_by_sector[key] %}
+      <tr><td>{{ label }}</td><td class="text-end tabular">{{ r.submitted }}</td><td class="text-end tabular">{{ r.responded }}</td><td class="text-end tabular">{% if r.rate is not none %}{{ r.rate|fr_number(1) }} %{% else %}—{% endif %}</td></tr>
+      {% endfor %}
+    </tbody></table>
+  </div></div></div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-4"><div class="panel"><div class="panel-header"><h2>Par statut</h2></div>
+    <div class="table-responsive"><table class="table table-sm table-compact"><thead><tr><th scope="col">Statut</th><th scope="col" class="text-end">Nombre</th></tr></thead><tbody>
+    {% for status, count in s.by_status %}<tr><td><span class="badge {{ status.badge_class }}">{{ status.label }}</span></td><td class="text-end tabular"><a href="{{ url_for('applications.index', status=status.code, archived='all') }}">{{ count }}</a></td></tr>{% endfor %}
+    </tbody></table></div></div></div>
+  <div class="col-lg-4">
+    <div class="panel mb-3"><div class="panel-header"><h2>Par catégorie</h2></div>
+      <table class="table table-sm table-compact"><tbody>
+      {% for label, count in s.by_category %}<tr><td>{{ label }}</td><td class="text-end tabular">{{ count }}</td></tr>{% else %}<tr><td class="text-secondary">Aucune donnée</td></tr>{% endfor %}
+      </tbody></table></div>
+    <div class="panel mb-3"><div class="panel-header"><h2>Résultats des concours publics</h2></div>
+      <table class="table table-sm table-compact"><tbody>
+      {% for label, count in s.competition_results %}<tr><td>{{ label }}</td><td class="text-end tabular">{{ count }}</td></tr>{% endfor %}
+      </tbody></table></div>
+  </div>
+  <div class="col-lg-4">
+    <div class="panel mb-3"><div class="panel-header"><h2>Villes (top 10)</h2></div>
+      <table class="table table-sm table-compact"><tbody>
+      {% for label, count in s.by_city %}<tr><td>{{ label }}</td><td class="text-end tabular">{{ count }}</td></tr>{% else %}<tr><td class="text-secondary">Aucune donnée</td></tr>{% endfor %}
+      </tbody></table></div>
+    <div class="panel mb-3"><div class="panel-header"><h2>Sources (top 10)</h2></div>
+      <table class="table table-sm table-compact"><tbody>
+      {% for label, count in s.by_source %}<tr><td>{{ label }}</td><td class="text-end tabular">{{ count }}</td></tr>{% else %}<tr><td class="text-secondary">Aucune donnée</td></tr>{% endfor %}
+      </tbody></table></div>
+    <div class="panel"><div class="panel-header"><h2>Préparation</h2><a class="small" href="{{ url_for('preparation.index') }}">Ouvrir</a></div>
+      <table class="table table-sm table-compact"><tbody>
+        <tr><td>Sujets suivis</td><td class="text-end tabular">{{ s.prep.total }}</td></tr>
+        {% for label, count in s.prep.by_status %}<tr><td>{{ label }}</td><td class="text-end tabular">{{ count }}</td></tr>{% endfor %}
+        <tr><td>Temps total</td><td class="text-end tabular">{{ (s.prep.minutes // 60) }} h {{ '%02d'|format(s.prep.minutes % 60) }}</td></tr>
+        <tr><td>Confiance moyenne</td><td class="text-end tabular">{{ s.prep.avg_confidence|fr_number(1) if s.prep.avg_confidence is not none else '—' }} / 5</td></tr>
+      </tbody></table></div>
+  </div>
+</div>
+<script type="application/json" id="chart-data">{{ {'monthly': s.charts.monthly, 'response': s.charts.response}|tojson }}</script>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.min.js') }}"></script>{% endblock %}

@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block content %}
+{% set icons = {'all': 'bi-collection', 'public': 'bi-bank', 'private': 'bi-building'} %}
+{% set export_args = dict(active_filters, vue_secteur=mode) %}
+{% call m.page_header(page_title, pagination.total ~ " résultat" ~ ('s' if pagination.total > 1 else ''), icons[mode]) %}
+  <div class="btn-group btn-group-sm">
+    <a class="btn btn-outline-secondary" href="{{ url_for('exports.export_csv', **export_args) }}" title="Exporter la sélection en CSV (Excel)"><i class="bi bi-filetype-csv" aria-hidden="true"></i> CSV</a>
+    <a class="btn btn-outline-secondary" href="{{ url_for('exports.export_json', **export_args) }}" title="Exporter la sélection en JSON"><i class="bi bi-filetype-json" aria-hidden="true"></i> JSON</a>
+  </div>
+  <a class="btn btn-sm btn-primary" href="{{ url_for('applications.create', sector=mode if mode != 'all' else 'public') }}"><i class="bi bi-plus-lg" aria-hidden="true"></i> {{ 'Nouveau concours' if mode == 'public' else ('Nouvelle offre' if mode == 'private' else 'Nouvelle candidature') }}</a>
+{% endcall %}
+
+<form method="get" action="{{ url_for(endpoint) }}" class="panel filter-bar mb-3" role="search" aria-label="Filtres">
+  <div class="panel-body pb-2">
+    <div class="row g-2 align-items-end">
+      <div class="col-12 col-md-4 col-xl-3">
+        <label class="form-label small mb-1" for="f-q">Recherche</label>
+        <input id="f-q" class="form-control form-control-sm" type="search" name="q" value="{{ args.get('q', '') }}" placeholder="Poste, organisation, ville, référence, spécialité">
+      </div>
+      {% if mode == 'all' %}
+      <div class="col-6 col-md-2 col-xl-1">
+        <label class="form-label small mb-1" for="f-sector">Secteur</label>
+        <select id="f-sector" name="sector" class="form-select form-select-sm" data-autosubmit>
+          <option value="">Tous</option>
+          {% for k, v in C.SECTORS.items() %}<option value="{{ k }}" {{ 'selected' if args.get('sector') == k }}>{{ v }}</option>{% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <div class="col-6 col-md-2">
+        <label class="form-label small mb-1" for="f-status">Statut</label>
+        <select id="f-status" name="status" class="form-select form-select-sm" data-autosubmit>
+          <option value="">Tous</option>
+          {% for s in statuses %}<option value="{{ s.code }}" {{ 'selected' if args.get('status') == s.code }}>{{ s.label }}</option>{% endfor %}
+        </select>
+      </div>
+      {% if mode != 'public' %}
+      <div class="col-6 col-md-2 col-xl-1">
+        <label class="form-label small mb-1" for="f-category">Contrat</label>
+        <select id="f-category" name="category" class="form-select form-select-sm" data-autosubmit>
+          <option value="">Tous</option>
+          {% for k, v in C.CATEGORIES.items() %}{% if mode == 'all' or k != 'concours' %}<option value="{{ k }}" {{ 'selected' if args.get('category') == k }}>{{ v }}</option>{% endif %}{% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <div class="col-6 col-md-2 col-xl-1">
+        <label class="form-label small mb-1" for="f-city">Ville</label>
+        <select id="f-city" name="city" class="form-select form-select-sm" data-autosubmit>
+          <option value="">Toutes</option>
+          {% for c in cities %}<option value="{{ c }}" {{ 'selected' if args.get('city') == c }}>{{ c }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-2 col-xl-1">
+        <label class="form-label small mb-1" for="f-deadline">Échéance</label>
+        <select id="f-deadline" name="deadline" class="form-select form-select-sm" data-autosubmit>
+          <option value="">Toutes</option>
+          {% for k, v in deadline_filters.items() %}<option value="{{ k }}" {{ 'selected' if args.get('deadline') == k }}>{{ v }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-2 col-xl-1">
+        <label class="form-label small mb-1" for="f-priority">Priorité</label>
+        <select id="f-priority" name="priority" class="form-select form-select-sm" data-autosubmit>
+          <option value="">Toutes</option>
+          {% for k, v in priorities.items() %}<option value="{{ k }}" {{ 'selected' if args.get('priority') == k|string }}>{{ v }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-2 col-xl-1">
+        <label class="form-label small mb-1" for="f-archived">Archives</label>
+        <select id="f-archived" name="archived" class="form-select form-select-sm" data-autosubmit>
+          <option value="">Masquées</option>
+          <option value="all" {{ 'selected' if args.get('archived') == 'all' }}>Incluses</option>
+          <option value="only" {{ 'selected' if args.get('archived') == 'only' }}>Seulement</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-2 col-xl-1">
+        <label class="form-label small mb-1" for="f-sort">Tri</label>
+        <select id="f-sort" name="sort" class="form-select form-select-sm" data-autosubmit>
+          {% for k, v in sorts.items() %}<option value="{{ k }}" {{ 'selected' if (args.get('sort') or 'deadline') == k }}>{{ v }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-auto d-flex gap-2 align-items-center">
+        <div class="form-check form-check-inline mb-0 small">
+          <input class="form-check-input" type="checkbox" id="f-group" name="group" value="status" {{ 'checked' if args.get('group') == 'status' }} data-autosubmit>
+          <label class="form-check-label" for="f-group">Grouper par statut</label>
+        </div>
+        <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-funnel" aria-hidden="true"></i> Filtrer</button>
+        {% if active_filters %}<a class="btn btn-sm btn-link" href="{{ url_for(endpoint) }}">Réinitialiser</a>{% endif %}
+      </div>
+    </div>
+  </div>
+</form>
+
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2 small">
+  {% if saved_filters %}
+    <span class="text-secondary"><i class="bi bi-bookmark" aria-hidden="true"></i> Filtres enregistrés :</span>
+    {% for sf in saved_filters %}
+      <span class="btn-group btn-group-sm">
+        <a class="btn btn-outline-secondary" href="{{ url_for(sf.endpoint) }}?{{ sf.query_string }}">{{ sf.name }}</a>
+        {{ m.post_button(url_for('applications.delete_filter', filter_id=sf.id), None, 'bi-x', 'btn btn-sm btn-outline-secondary', confirm='Supprimer le filtre « ' ~ sf.name ~ ' » ?', title='Supprimer ce filtre') }}
+      </span>
+    {% endfor %}
+  {% endif %}
+  {% if active_filters %}
+  <form method="post" action="{{ url_for('applications.save_filter') }}" class="d-flex gap-1 ms-auto">
+    {{ save_form.csrf_token }}{{ save_form.query }}{{ save_form.endpoint }}
+    <label for="sf-name" class="visually-hidden">Nom du filtre</label>
+    <input id="sf-name" name="name" class="form-control form-control-sm" placeholder="Nom du filtre" required maxlength="100" style="max-width: 180px">
+    <button class="btn btn-sm btn-outline-secondary" type="submit"><i class="bi bi-bookmark-plus" aria-hidden="true"></i> Enregistrer</button>
+  </form>
+  {% endif %}
+</div>
+
+{% if pagination.items %}
+<div class="panel">
+  <div class="table-responsive">
+    <table class="table table-hover table-compact align-middle">
+      <thead>
+        <tr>
+          <th scope="col">Poste</th>
+          {% if mode == 'all' %}<th scope="col">Secteur</th>{% endif %}
+          {% if mode == 'public' %}<th scope="col">Code / grade</th><th scope="col">Dossier</th><th scope="col">Résultat</th>
+          {% elif mode == 'private' %}<th scope="col">Contrat</th><th scope="col">Lieu / mode</th><th scope="col">Salaire</th>
+          {% else %}<th scope="col">Ville</th>{% endif %}
+          <th scope="col">Statut</th>
+          <th scope="col">Prochaine action</th>
+          <th scope="col">Échéance</th>
+          <th scope="col">Priorité</th>
+          <th scope="col"><span class="visually-hidden">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% set ns = namespace(group=None) %}
+      {% for a in pagination.items %}
+        {% if args.get('group') == 'status' and ns.group != a.status %}
+          {% set ns.group = a.status %}
+          <tr class="table-light"><th colspan="10" scope="rowgroup" class="text-start">{{ m.status_badge(a) }}</th></tr>
+        {% endif %}
+        <tr class="{{ 'row-archived' if a.archived }}">
+          <td class="title-cell">
+            <a href="{{ url_for('applications.detail', app_id=a.id) }}">{{ a.title }}</a> {{ m.sample_badge(a) }}{% if a.archived %} <span class="badge bg-light text-secondary border">Archivée</span>{% endif %}
+            <div class="small text-secondary text-truncate">{{ a.organization }}{% if a.reference %} · {{ a.reference }}{% endif %}</div>
+          </td>
+          {% if mode == 'all' %}<td>{{ m.sector_badge(a) }}</td>{% endif %}
+          {% if mode == 'public' %}
+            {% set p = a.public_details %}
+            <td class="small">{{ p.competition_code if p and p.competition_code else '—' }}<div class="text-secondary">{{ p.grade if p and p.grade else '' }}{% if p and p.scale %} · {{ p.scale }}{% endif %}</div></td>
+            <td style="min-width:110px">{{ m.progress(a.checklist_summary.percent) }}</td>
+            <td class="small">{{ p.result_label if p else '—' }}</td>
+          {% elif mode == 'private' %}
+            {% set p = a.private_details %}
+            <td class="small">{{ a.category_label }}</td>
+            <td class="small">{{ a.city or '—' }}{% if a.country and a.country != 'Maroc' %} ({{ a.country }}){% endif %}<div class="text-secondary">{{ a.work_mode_label }}</div></td>
+            <td class="small tabular">{% if p and (p.salary_min or p.salary_max) %}{{ p.salary_min|money(p.currency_label) if p.salary_min else '' }}{% if p.salary_min and p.salary_max %} – {% endif %}{{ p.salary_max|money(p.currency_label) if p.salary_max else '' }}{% else %}<span class="text-secondary">Non précisé</span>{% endif %}</td>
+          {% else %}
+            <td class="small">{{ a.city or '—' }}</td>
+          {% endif %}
+          <td>{{ m.status_badge(a) }}</td>
+          <td class="small" style="max-width: 220px">{{ a.next_action or '—' }}</td>
+          <td class="small text-nowrap">{% if a.next_due_date %}<span class="tabular">{{ a.next_due_date|fr_date }}</span><br>{{ deadline_badge(a.next_due_date) }}{% else %}—{% endif %}</td>
+          <td>{{ m.priority_badge(a.priority) }}</td>
+          <td class="text-end text-nowrap">
+            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('applications.edit', app_id=a.id) }}" title="Modifier" aria-label="Modifier {{ a.title }}"><i class="bi bi-pencil" aria-hidden="true"></i></a>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{{ m.pagination_nav(pagination, endpoint, args) }}
+{% else %}
+<div class="panel">
+  {% if active_filters %}
+    {% call m.empty_state('bi-search', 'Aucun résultat pour ces filtres') %}<a class="btn btn-sm btn-outline-secondary" href="{{ url_for(endpoint) }}">Réinitialiser les filtres</a>{% endcall %}
+  {% else %}
+    {% call m.empty_state('bi-inbox', 'Aucune candidature ici pour le moment', 'Ajoutez votre première candidature : les échéances, le dossier et les étapes se suivent ensuite depuis sa fiche.') %}
+      <a class="btn btn-sm btn-primary" href="{{ url_for('applications.create', sector=mode if mode != 'all' else 'public') }}">Ajouter</a>
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('exports.index') }}">Importer un CSV</a>
+    {% endcall %}
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

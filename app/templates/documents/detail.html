@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ doc.name }}{% endblock %}
+{% block content %}
+{% call m.page_header(doc.display_name, doc.category_label, 'bi-file-earmark-text') %}
+  {% if doc.has_file %}<a class="btn btn-sm btn-primary" href="{{ url_for('documents.download', doc_id=doc.id) }}"><i class="bi bi-download" aria-hidden="true"></i> Télécharger</a>{% endif %}
+  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('documents.new_version', doc_id=doc.id) }}"><i class="bi bi-file-earmark-plus" aria-hidden="true"></i> Nouvelle version</a>
+  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('documents.edit', doc_id=doc.id) }}"><i class="bi bi-pencil" aria-hidden="true"></i> Modifier</a>
+  {{ m.post_button(url_for('documents.delete', doc_id=doc.id), 'Supprimer', 'bi-trash', 'btn btn-sm btn-outline-danger', confirm='Supprimer « ' ~ doc.display_name ~ ' » et son fichier ? Il sera détaché de ' ~ (doc.application_links|length) ~ ' candidature(s). Les autres versions sont conservées.') }}
+{% endcall %}
+{% if file_missing %}<div class="alert alert-warning small"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Le fichier de ce document est introuvable dans le dossier uploads (sauvegarde des documents non restaurée ?).</div>{% endif %}
+{% if newer %}<div class="alert alert-info small">Une version plus récente existe : {% for n in newer %}<a href="{{ url_for('documents.detail', doc_id=n.id) }}">{{ n.display_name }}</a>{{ ', ' if not loop.last }}{% endfor %}.</div>{% endif %}
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="panel"><div class="panel-body">
+      <dl class="dl-compact">
+        <dt>Catégorie</dt><dd>{{ doc.category_label }}</dd>
+        <dt>Version</dt><dd>v{{ doc.version }}</dd>
+        <dt>Fichier</dt><dd>{% if doc.has_file %}{{ doc.original_filename }} · {{ doc.size_bytes|file_size }}{% else %}Aucun fichier (document papier ou exemple){% endif %}</dd>
+        <dt>Ajouté le</dt><dd>{{ doc.uploaded_at|fr_timestamp }}</dd>
+        <dt>Expiration</dt><dd>{{ doc.expires_on|fr_date }}{% if doc.is_expired %} <span class="badge text-bg-danger">Expiré</span>{% endif %}</dd>
+        <dt>Notes</dt><dd>{{ doc.notes|nl2br if doc.notes else '—' }}</dd>
+      </dl>
+    </div></div>
+  </div>
+  <div class="col-lg-6">
+    <div class="panel mb-3"><div class="panel-header"><h2>Utilisé dans</h2></div><div class="panel-body py-2">
+      {% if doc.application_links %}<ul class="list-unstyled mb-0">{% for link in doc.application_links %}<li class="py-1"><a href="{{ url_for('applications.detail', app_id=link.application_id, onglet='dossier') }}">{{ link.application.title }}</a> <span class="small text-secondary">· {{ link.application.organization }}</span></li>{% endfor %}</ul>
+      {% else %}<p class="small text-secondary mb-0">Pas encore rattaché à une candidature.</p>{% endif %}
+    </div></div>
+    <div class="panel"><div class="panel-header"><h2>Historique des versions</h2></div><div class="panel-body py-2">
+      <ul class="list-unstyled mb-0">{% for v in versions %}<li class="py-1">{% if v.id == doc.id %}<strong>v{{ v.version }}</strong> (affichée){% else %}<a href="{{ url_for('documents.detail', doc_id=v.id) }}">v{{ v.version }}</a>{% endif %} <span class="small text-secondary">· {{ v.uploaded_at|fr_timestamp }}</span></li>{% endfor %}</ul>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

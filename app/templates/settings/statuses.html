@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Paramètres — statuts{% endblock %}
+{% block content %}
+{% call m.page_header("Paramètres", None, "bi-gear") %}{% endcall %}
+{% include "settings/_nav.html" %}
+<p class="small text-secondary">Les libellés et l’ordre sont libres. La <strong>signification</strong> détermine les statistiques (envoyée, réponse, offre, refus…) et si la candidature est considérée comme clôturée. « Exige un dossier complet » bloque ce statut tant que des pièces obligatoires manquent (contournable avec « Forcer »).</p>
+<div class="panel mb-3">
+  <div class="table-responsive">
+    <table class="table table-compact align-middle">
+      <thead><tr><th scope="col">Ordre</th><th scope="col">Libellé</th><th scope="col">Signification</th><th scope="col">Dossier complet</th><th scope="col">Utilisé</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+      <tbody>
+      {% for s in items %}
+      <tr>
+        <td colspan="4">
+          <form method="post" action="{{ url_for('settings.update_status', status_id=s.id) }}" class="row g-2 align-items-center">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="col-2 col-lg-1"><label class="visually-hidden" for="pos-{{ s.id }}">Ordre</label><input id="pos-{{ s.id }}" type="number" name="position" min="0" max="1000" value="{{ s.position }}" class="form-control form-control-sm"></div>
+            <div class="col-10 col-lg-4"><label class="visually-hidden" for="lab-{{ s.id }}">Libellé</label><input id="lab-{{ s.id }}" name="label" value="{{ s.label }}" maxlength="80" required class="form-control form-control-sm"></div>
+            <div class="col-8 col-lg-4"><label class="visually-hidden" for="kind-{{ s.id }}">Signification</label>
+              <select id="kind-{{ s.id }}" name="kind" class="form-select form-select-sm">{% for k, v in kinds.items() %}<option value="{{ k }}" {{ 'selected' if s.kind == k }}>{{ v }}</option>{% endfor %}</select></div>
+            <div class="col-2 col-lg-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="requires_complete_dossier" value="y" id="req-{{ s.id }}" {{ 'checked' if s.requires_complete_dossier }}><label class="form-check-label small" for="req-{{ s.id }}">Exigé</label></div></div>
+            <div class="col-2 col-lg-1"><button class="btn btn-sm btn-outline-secondary" type="submit" title="Enregistrer" aria-label="Enregistrer {{ s.label }}"><i class="bi bi-check-lg" aria-hidden="true"></i></button></div>
+          </form>
+        </td>
+        <td class="small tabular">{{ usage.get(s.code, 0) }}</td>
+        <td class="text-end">{% if not usage.get(s.code) %}{{ m.post_button(url_for('settings.delete_status', status_id=s.id), None, 'bi-trash', 'btn btn-sm btn-outline-danger', confirm='Supprimer le statut « ' ~ s.label ~ ' » ?', title='Supprimer') }}{% endif %}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<form method="post" class="form-section" novalidate>
+  <h2><i class="bi bi-plus-circle" aria-hidden="true"></i> Nouveau statut</h2>
+  {{ form.csrf_token }}
+  <div class="row">
+    {{ m.field(form.label, 'col-md-4') }}
+    {{ m.field(form.kind, 'col-md-4') }}
+    {{ m.field(form.position, 'col-md-2') }}
+    <div class="col-md-2 pt-md-4">{{ m.field(form.requires_complete_dossier) }}</div>
+  </div>
+  <div class="pb-3"><button class="btn btn-primary btn-sm" type="submit">Ajouter le statut</button></div>
+</form>
+{% endblock %}

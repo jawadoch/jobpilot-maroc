@@ -1,0 +1,6 @@
+{% set ep = request.endpoint %}
+<ul class="nav nav-tabs mb-3">
+  {% for endpoint, label, icon in [('settings.profile', 'Profil', 'bi-person'), ('settings.statuses', 'Statuts', 'bi-signpost'), ('settings.checklist_template', 'Modèle de checklist', 'bi-list-check'), ('exports.index', 'Import / export', 'bi-arrow-down-up'), ('settings.backup', 'Sauvegarde', 'bi-shield-check'), ('settings.demo', 'Données d’exemple', 'bi-magic')] %}
+  <li class="nav-item"><a class="nav-link {{ 'active' if ep == endpoint }}" href="{{ url_for(endpoint) }}" {% if ep == endpoint %}aria-current="page"{% endif %}><i class="bi {{ icon }}" aria-hidden="true"></i> {{ label }}</a></li>
+  {% endfor %}
+</ul>

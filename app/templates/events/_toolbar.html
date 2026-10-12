@@ -1,0 +1,38 @@
+{# Barre commune : choix de la vue + filtres. Variables : view, kind, sector, include_closed #}
+<div class="panel mb-3">
+  <div class="panel-body py-2 d-flex flex-wrap align-items-center gap-2">
+    <div class="btn-group btn-group-sm" role="group" aria-label="Type de vue">
+      {% for key, label, icon in [('liste', 'Agenda', 'bi-list-ul'), ('semaine', 'Semaine', 'bi-calendar-week'), ('mois', 'Mois', 'bi-calendar3')] %}
+        <a class="btn {{ 'btn-primary' if view == key or (key == 'liste' and view not in ('semaine', 'mois')) else 'btn-outline-secondary' }}" href="{{ url_for('events.agenda', vue=key, type=kind, secteur=sector, cloturees='1' if include_closed else None) }}"><i class="bi {{ icon }}" aria-hidden="true"></i> {{ label }}</a>
+      {% endfor %}
+    </div>
+    <form method="get" class="d-flex flex-wrap gap-2 align-items-center ms-lg-auto filter-bar">
+      <input type="hidden" name="vue" value="{{ view }}">
+      {% if rng is defined %}<input type="hidden" name="periode" value="{{ rng }}">{% endif %}
+      {% if ref_date is defined %}<input type="hidden" name="date" value="{{ ref_date }}">{% endif %}
+      <label class="visually-hidden" for="ag-type">Type</label>
+      <select id="ag-type" name="type" class="form-select form-select-sm w-auto" data-autosubmit>
+        <option value="">Tous les types</option>
+        <option value="exams" {{ 'selected' if kind == 'exams' }}>Examens et entretiens</option>
+        <option value="action" {{ 'selected' if kind == 'action' }}>Prochaines actions</option>
+        {% for k, v in event_kinds.items() %}<option value="{{ k }}" {{ 'selected' if kind == k }}>{{ v }}</option>{% endfor %}
+      </select>
+      <label class="visually-hidden" for="ag-sector">Secteur</label>
+      <select id="ag-sector" name="secteur" class="form-select form-select-sm w-auto" data-autosubmit>
+        <option value="">Public et privé</option>
+        <option value="public" {{ 'selected' if sector == 'public' }}>Public</option>
+        <option value="private" {{ 'selected' if sector == 'private' }}>Privé</option>
+      </select>
+      <div class="form-check form-check-inline small mb-0">
+        <input class="form-check-input" type="checkbox" id="ag-closed" name="cloturees" value="1" {{ 'checked' if include_closed }} data-autosubmit>
+        <label class="form-check-label" for="ag-closed">Inclure les candidatures clôturées</label>
+      </div>
+      <noscript><button class="btn btn-sm btn-outline-secondary" type="submit">Filtrer</button></noscript>
+    </form>
+  </div>
+</div>
+<p class="small text-secondary">
+  Légende :
+  {% for key in ['overdue', 'today', 'soon3', 'soon7', 'upcoming', 'done'] %}<span class="badge {{ LEVELS[key][1] }} me-1"><i class="bi {{ LEVELS[key][2] }}" aria-hidden="true"></i> {{ LEVELS[key][0] }}</span>{% endfor %}
+  · Rappels affichés dans l’application uniquement (aucun e-mail ni notification n’est envoyé).
+</p>

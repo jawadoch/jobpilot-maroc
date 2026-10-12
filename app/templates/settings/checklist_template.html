@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Paramètres — modèle de checklist{% endblock %}
+{% block content %}
+{% call m.page_header("Paramètres", None, "bi-gear") %}{% endcall %}
+{% include "settings/_nav.html" %}
+<p class="small text-secondary">Ce modèle est copié dans la checklist de chaque <strong>nouveau concours public</strong>. Chaque checklist reste ensuite modifiable indépendamment, car les exigences varient d’un concours à l’autre. Modifier le modèle ne change pas les checklists existantes.</p>
+<div class="panel mb-3">
+  {% if items %}
+  <ul class="list-unstyled mb-0 px-3">
+    {% for item in items %}
+    <li class="checklist-item">
+      <div class="flex-grow-1">{{ item.label }}<div class="small text-secondary">{{ item.category_label or 'Sans catégorie' }}</div></div>
+      {{ m.post_button(url_for('settings.toggle_template_item', item_id=item.id), 'Obligatoire' if item.required else 'Facultatif', 'bi-asterisk' if item.required else 'bi-circle', 'btn btn-sm ' ~ ('btn-outline-danger' if item.required else 'btn-outline-secondary'), title='Basculer obligatoire / facultatif') }}
+      {{ m.post_button(url_for('settings.delete_template_item', item_id=item.id), None, 'bi-trash', 'btn btn-sm btn-outline-danger', confirm='Retirer « ' ~ item.label ~ ' » du modèle ?', title='Retirer') }}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+    {% call m.empty_state('bi-list-check', 'Modèle vide', 'Les nouveaux concours démarreront avec une checklist vide.') %}{% endcall %}
+  {% endif %}
+</div>
+<form method="post" class="form-section" novalidate>
+  <h2><i class="bi bi-plus-circle" aria-hidden="true"></i> Ajouter une pièce au modèle</h2>
+  {{ form.csrf_token }}
+  <div class="row">
+    {{ m.field(form.label, 'col-md-6') }}
+    {{ m.field(form.category, 'col-md-4', help='Permet de proposer les documents correspondants de la bibliothèque.') }}
+    <div class="col-md-2 pt-md-4">{{ m.field(form.required) }}</div>
+  </div>
+  <div class="pb-3"><button class="btn btn-primary btn-sm" type="submit">Ajouter</button></div>
+</form>
+{% endblock %}

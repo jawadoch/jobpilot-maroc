@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Documents{% endblock %}
+{% block content %}
+{% call m.page_header("Documents", "Bibliothèque réutilisable : CV, diplômes, attestations… Les fichiers restent sur cet ordinateur.", "bi-folder2-open") %}
+  <a class="btn btn-sm btn-primary" href="{{ url_for('documents.create', categorie=category) }}"><i class="bi bi-upload" aria-hidden="true"></i> Ajouter un document</a>
+{% endcall %}
+
+<form method="get" class="panel filter-bar mb-3" role="search">
+  <div class="panel-body py-2 row g-2 align-items-end">
+    <div class="col-md-5"><label class="form-label small mb-1" for="d-q">Recherche</label><input id="d-q" class="form-control form-control-sm" type="search" name="q" value="{{ term }}" placeholder="Nom, notes, nom de fichier"></div>
+    <div class="col-md-4"><label class="form-label small mb-1" for="d-cat">Catégorie</label>
+      <select id="d-cat" name="categorie" class="form-select form-select-sm" data-autosubmit>
+        <option value="">Toutes ({{ counts.values()|sum }})</option>
+        {% for k, v in C.DOCUMENT_CATEGORIES.items() %}<option value="{{ k }}" {{ 'selected' if category == k }}>{{ v }} ({{ counts.get(k, 0) }})</option>{% endfor %}
+      </select></div>
+    <div class="col-md-3"><button class="btn btn-sm btn-primary" type="submit">Filtrer</button>{% if term or category %} <a class="btn btn-sm btn-link" href="{{ url_for('documents.index') }}">Réinitialiser</a>{% endif %}</div>
+  </div>
+</form>
+
+{% if groups %}
+  {% for code, label, docs in groups %}
+  <section class="panel mb-3" aria-labelledby="cat-{{ code }}">
+    <div class="panel-header"><h2 id="cat-{{ code }}">{{ label }} <span class="text-secondary fw-normal">({{ docs|length }})</span></h2>
+      {% if code == 'cv' %}<span class="small text-secondary">Variantes de CV : choisissez celle envoyée dans chaque candidature privée.</span>{% endif %}</div>
+    <div class="table-responsive">
+      <table class="table table-hover table-compact align-middle">
+        <thead><tr><th scope="col">Nom</th><th scope="col">Version</th><th scope="col">Fichier</th><th scope="col">Ajouté le</th><th scope="col">Expiration</th><th scope="col">Utilisé dans</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+        <tbody>
+        {% for d in docs %}
+        <tr>
+          <td><a class="fw-semibold text-decoration-none" href="{{ url_for('documents.detail', doc_id=d.id) }}">{{ d.name }}</a> {{ m.sample_badge(d) }}{% if d.newer_versions %} <span class="badge bg-light text-secondary border" title="Une version plus récente existe">ancienne version</span>{% endif %}</td>
+          <td class="tabular">v{{ d.version }}</td>
+          <td class="small">{% if d.has_file %}<i class="bi bi-file-earmark" aria-hidden="true"></i> {{ d.extension|upper }} · {{ d.size_bytes|file_size }}{% else %}<span class="text-secondary">Sans fichier</span>{% endif %}</td>
+          <td class="small tabular">{{ d.uploaded_at|fr_timestamp }}</td>
+          <td class="small">{% if d.expires_on %}<span class="tabular">{{ d.expires_on|fr_date }}</span>{% if d.is_expired %} <span class="badge text-bg-danger">Expiré</span>{% endif %}{% else %}—{% endif %}</td>
+          <td class="small">{{ d.application_links|length }} candidature(s)</td>
+          <td class="text-end text-nowrap">
+            {% if d.has_file %}<a class="btn btn-sm btn-outline-secondary" href="{{ url_for('documents.download', doc_id=d.id) }}" title="Télécharger" aria-label="Télécharger {{ d.name }}"><i class="bi bi-download" aria-hidden="true"></i></a>{% endif %}
+            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('documents.new_version', doc_id=d.id) }}" title="Nouvelle version" aria-label="Nouvelle version de {{ d.name }}"><i class="bi bi-file-earmark-plus" aria-hidden="true"></i></a>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endfor %}
+{% else %}
+  <div class="panel">{% call m.empty_state('bi-folder', 'Aucun document', 'Ajoutez vos CV (Data Engineer, Data Scientist / IA, BI, secteur public), diplômes, CIN, attestations… pour les réutiliser dans vos dossiers.') %}<a class="btn btn-sm btn-primary" href="{{ url_for('documents.create') }}">Ajouter un document</a>{% endcall %}</div>
+{% endif %}
+{% endblock %}

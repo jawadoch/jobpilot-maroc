@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% set titles = {'create': 'Ajouter un document', 'edit': 'Modifier le document', 'version': 'Nouvelle version'} %}
+{% block title %}{{ titles[mode] }}{% endblock %}
+{% block content %}
+{% call m.page_header(titles[mode] ~ (' — ' ~ doc.name if doc else ''), None, 'bi-file-earmark-arrow-up') %}{% endcall %}
+<form method="post" enctype="multipart/form-data" novalidate class="form-section">
+  {{ form.csrf_token }}
+  {% if mode == 'version' %}
+    <div class="alert alert-info small"><i class="bi bi-info-circle" aria-hidden="true"></i> La version actuelle (v{{ doc.version }}) est conservée : un nouveau document lié sera créé.</div>
+  {% endif %}
+  <div class="row">
+    {% if form.name %}{{ m.field(form.name, 'col-md-6') }}{% endif %}
+    {% if form.category %}{{ m.field(form.category, 'col-md-3') }}{% endif %}
+    {{ m.field(form.version, 'col-md-3') }}
+    {% if form.file %}
+      {{ m.field(form.file, 'col-md-6', help='Formats : PDF, DOC, DOCX, ODT, RTF, TXT, JPG, PNG — ' ~ config.MAX_UPLOAD_MB ~ ' Mo maximum.' ~ (' Facultatif : laissez vide pour un document papier uniquement.' if mode == 'create' else '')) }}
+    {% endif %}
+    {{ m.field(form.expires_on, 'col-md-3', help='Ex. CIN, attestation à durée limitée.') }}
+    {{ m.field(form.notes, 'col-md-12') }}
+  </div>
+  <div class="d-flex gap-2 pb-3">
+    <button class="btn btn-primary" type="submit"><i class="bi bi-check-lg" aria-hidden="true"></i> Enregistrer</button>
+    <a class="btn btn-outline-secondary" href="{{ url_for('documents.detail', doc_id=doc.id) if doc else url_for('documents.index') }}">Annuler</a>
+  </div>
+</form>
+{% endblock %}
